@@ -8,17 +8,24 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 link_directories(${catkin_LIBRARY_DIRS})
 
 # Qt
-set(CMAKE_AUTOMOC ON)
+#set(CMAKE_AUTOMOC ON)
 
 if(rviz_QT_VERSION VERSION_LESS "5")
-	message(STATUS "Using Qt4 based on the rviz_QT_VERSION: ${rviz_QT_VERSTION}")
-	find_package(Qt4 ${rviz_QT_VERSION} EXACT REQUIRED QtCore QtGui)
-	include(${QT_USE_FILE})
+	message(STATUS "Using Qt4 based on the rviz_QT_VERSION: ${rviz_QT_VERSION}")
+	#find_package(Qt4 ${rviz_QT_VERSION} EXACT REQUIRED QtCore QtGui)
+	#include(${QT_USE_FILE})
 else()
-	message(STATUS "Using Qt5 based on the rviz_QT_VERSION: ${rviz_QT_VERSTION}")
+	message(STATUS "Using Qt5 based on the rviz_QT_VERSION: ${rviz_QT_VERSION}")
    find_package(Qt5 ${rviz_QT_VERSION} EXACT REQUIRED Core Widgets)
 	set(QT_LIBRARIES Qt5::Widgets)
+	include_directories(${Qt5Widgets_INCLUDE_DIRS})
+	message(STATUS "QT widgets includes: ${Qt5Widgets_INCLUDE_DIRS} ")
+	#include_directories(${Qt5Gui_INCLUDE_DIRS})
+	#message(STATUS "QT Gui includes: ${Qt5Gui_INCLUDE_DIRS} ")
+	#include_directories(${Qt5Core_INCLUDE_DIRS})
+	#message(STATUS "QT Core includes: ${Qt5Core_INCLUDE_DIRS} ")
 endif()
+
 
 add_definitions(-DQT_NO_KEYWORDS)
 
@@ -38,7 +45,30 @@ else()
 	message(FATAL_ERROR "osvr")
 endif()
 
-add_library(${PROJECT_NAME} src/rviz_plugin_osvr.cpp )
+find_package(PkgConfig)
+pkg_check_modules(OGRE OGRE)
+include_directories(${OGRE_INCLUDE_DIRS})
+message(STATUS "OGRE LIBRARIES: ${OGRE_INCLUDE_DIRS}")
+
+
+set(SRC_FILES
+	src/ogre_osvr.cpp
+	src/plugin_display.cpp
+	)
+
+#generate Qt MOC files
+qt5_wrap_cpp(MOC_FILES
+	include/rviz_plugin_osvr/plugin_display.h
+	include/rviz_plugin_osvr/ogre_osvr.h
+	)
+
+add_library(${PROJECT_NAME} ${SRC_FILES} ${MOC_FILES})
+
+SET(CMAKE_SHARED_LINKER_FLAGS -Wl,--no-allow-shlib-undefined,--no-undefined)
+#SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES
+#	PREFIX ""
+#	LINK_FLAGS "-Wl, --no-allow-shlib-undefined"
+#	)
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${QT_LIBRARIES} ${OSVR_LIBRARIES})
 
 
