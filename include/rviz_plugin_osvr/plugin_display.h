@@ -3,8 +3,8 @@
 #include <QObject>
 #include <rviz/display.h>
 #include <OGRE/OgreRenderTargetListener.h>
-
-#include <osvr/ClientKit/ClientKit.h>
+#include <rviz_plugin_osvr/ogre_osvr.h>
+#include "osvr/ClientKit/ClientKit.h"
 //#include <QWidget.h>
 
 namespace rviz{
@@ -37,6 +37,12 @@ namespace rviz_plugin_osvr
 		private:
 			rviz::RenderWidget *render_widget_;
 			osvr::clientkit::ClientContext *osvr_context_;
+			Ogre::SceneNode *scene_node_;
+
+			#ifndef Q_MOC_RUN
+				OsvrClient *osvr_client_;
+			#endif
+			
 			
 	};
 

@@ -9,5 +9,5 @@
 
 	<node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="true" output="screen" />
 
-	<node name="rviz" pkg="rviz" type="rviz" output="screen"/>
+	<node name="rviz" args="-l" pkg="rviz" type="rviz" output="screen"/>
 </launch>

@@ -23,9 +23,9 @@ namespace rviz_plugin_osvr
 	{
 		for(int i=0;i<2;i++)
 		{
-			cameras_[0]=0;
-			viewports_[0]=0;
-			compositors_[0]=0;
+			cameras_[i]=0;
+			viewports_[i]=0;
+			compositors_[i]=0;
 		}
 		ROS_INFO("OsvrClient created");
 	}
@@ -55,6 +55,7 @@ namespace rviz_plugin_osvr
 
 	bool OsvrClient::setupOgre(Ogre::SceneManager *sm, Ogre::RenderWindow *win, Ogre::SceneNode *parent)
 	{
+		ROS_INFO("Setting up OGRE...");
 		window_ = win;
 		scene_manager_ = sm;
 		if(parent)
@@ -70,7 +71,10 @@ namespace rviz_plugin_osvr
 		cameras_[0] = sm->createCamera("CameraLeft");
 		cameras_[1] = sm->createCamera("CameraRight");
 
-		Ogre::MaterialPtr matLeft = Ogre::MaterialManager::getSingleton().getByName("Ogre/Compositor/Osvr/Left");
+		Ogre::MaterialPtr matLeft = Ogre::MaterialManager::getSingleton().getByName("Ogre/Compositor/Osvr");
+		ROS_INFO("matLeft isNull: %x\n",matLeft.isNull());
+
+
 		Ogre::MaterialPtr matRight = matLeft->clone("Ogre/Compositor/Osvr/Right");
 		  
 		Ogre::GpuProgramParametersSharedPtr pParamsLeft =
@@ -84,9 +88,9 @@ namespace rviz_plugin_osvr
 		pParamsLeft->setNamedConstant("HmdWarpParam", hmdwarp);
 		pParamsRight->setNamedConstant("HmdWarpParam", hmdwarp);
 
-		Ogre::Vector4 hmdchrom = Ogre::Vector4(g_defaultChromAb);
-		pParamsLeft->setNamedConstant("ChromAbParam", hmdchrom);
-		pParamsRight->setNamedConstant("ChromAbParam", hmdchrom);
+//		Ogre::Vector4 hmdchrom = Ogre::Vector4(g_defaultChromAb);
+//		pParamsLeft->setNamedConstant("ChromAbParam", hmdchrom);
+//		pParamsRight->setNamedConstant("ChromAbParam", hmdchrom);
 
 		pParamsLeft->setNamedConstant("LensCenter", 0.5f );
 		pParamsRight->setNamedConstant("LensCenter", 0.5f );
@@ -112,7 +116,7 @@ namespace rviz_plugin_osvr
 				cameras_[i]->setNearClipDistance(g_defaultNearClip);
 				cameras_[i]->setFarClipDistance(g_defaultFarClip);
 				cameras_[i]->setPosition((i * 2 - 1) * g_defaultIPD * 0.5f, 0, 0);
-										
+				cameras_[i]->setFOVy(Ogre::Radian(1.2));
 			//}
 
 			viewports_[i] = win->addViewport(cameras_[i], i, 0.5f * i, 0, 0.5f, 1.0f);

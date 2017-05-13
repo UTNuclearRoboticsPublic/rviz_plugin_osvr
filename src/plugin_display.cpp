@@ -18,14 +18,19 @@
 #include <osvr/ClientKit/ServerAutoStartC.h>
 
 #include <QWidget>
+#include <QApplication>
+#include <QDesktopWidget>
 
 namespace rviz_plugin_osvr{
 
-	PluginDisplay::PluginDisplay()
+	PluginDisplay::PluginDisplay() : osvr_client_(0), osvr_context_(0), render_widget_(0), scene_node_(0)
 	{
+		Ogre::MaterialManager::getSingleton().setVerbose(true);
+		std::string rviz_path = ros::package::getPath(ROS_PACKAGE_NAME);
+		Ogre::ResourceGroupManager* rm = Ogre::ResourceGroupManager::getSingletonPtr();
+		rm->addResourceLocation( rviz_path + "/ogre_media", "FileSystem", ROS_PACKAGE_NAME);
+		rm->initialiseResourceGroup(ROS_PACKAGE_NAME);
 		osvrClientAttemptServerAutoStart();
-		osvr_context_ = new osvr::clientkit::ClientContext("com.osvr.rviz_plugin_osvr");
-
 	}
 
 	PluginDisplay::~PluginDisplay()
@@ -55,9 +60,6 @@ namespace rviz_plugin_osvr{
 
 		scene_node_ = scene_manager_->getRootSceneNode()->createChildSceneNode();
 
-		update(0,0);
-		render_widget_->setVisible(true);
-
 		
 	}
 
@@ -73,14 +75,48 @@ namespace rviz_plugin_osvr{
 	void PluginDisplay::onEnable()
 	{
 		ROS_INFO("PluginDisplay enabled");
-		std::string disp_desc = osvr_context_->getStringParameter("/display");
-		ROS_INFO_STREAM("disp desc " << disp_desc);
+
+		if(!osvr_client_)
+		{
+			Ogre::RenderWindow *window = render_widget_->getRenderWindow();
+			osvr_client_ = new OsvrClient();
+			osvr_client_->setupOgre(scene_manager_, window, scene_node_);
+		}
+		
+		//if (!osvr_context_)
+		//{
+		//	osvr_context_ = new osvr::clientkit::ClientContext("com.osvr.rviz_plugin_osvr");
+		//	std::string disp_desc = osvr_context_->getStringParameter("/display");
+		//	ROS_INFO_STREAM("disp desc " << disp_desc);
+		//}
+
+		int x_res = 1280;
+		int y_res = 800;
+		if (osvr_client_)
+		{ 
+			int primary_screen = QApplication::desktop()->primaryScreen();
+			QRect screen_res = QApplication::desktop()->screenGeometry( primary_screen  );
+			render_widget_->setGeometry( screen_res.x(), screen_res.y(), x_res, y_res  );
+			render_widget_->showNormal();   
+		}
 	}
 
 
 	void PluginDisplay::onDisable()
 	{
 		ROS_INFO("PluginDisplay disabled");
+		if(osvr_client_)
+		{
+			delete osvr_client_;
+			osvr_client_=0;
+		}
+
+
+		if(osvr_context_)
+		{
+			delete osvr_context_;
+			osvr_context_=0;
+		}
 	}
 
 	void PluginDisplay::postRenderTargetUpdate(const Ogre::RenderTargetEvent& evt)
@@ -106,9 +142,12 @@ namespace rviz_plugin_osvr{
 		const Ogre::Camera *cam = context_->getViewManager()->getCurrent()->getCamera();
 		Ogre::Vector3 pos = cam->getDerivedPosition();
 		Ogre::Quaternion ori = cam->getDerivedOrientation();
-		scene_node_->setPosition(pos+Ogre::Vector3(10,0,10));
+		scene_node_->setPosition(pos+Ogre::Vector3(0,0,0));
 		scene_node_->setOrientation(ori);
-
+		if(osvr_client_)
+		{
+			osvr_client_->update();
+		}
 	}
 
 	void PluginDisplay::reset()
