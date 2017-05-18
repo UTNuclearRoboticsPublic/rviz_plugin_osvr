@@ -7,6 +7,11 @@ catkin_package()
 include_directories(include ${catkin_INCLUDE_DIRS})
 link_directories(${catkin_LIBRARY_DIRS})
 
+#Boost
+#find_package(Boost REQUIRED)
+#include_directories(${Boost_INCLUDE_DIRS})
+#link_directories(${Boost_LIBRARIES})
+
 # Qt
 #set(CMAKE_AUTOMOC ON)
 
@@ -69,6 +74,7 @@ SET(CMAKE_SHARED_LINKER_FLAGS -Wl,--no-allow-shlib-undefined,--no-undefined)
 #	PREFIX ""
 #	LINK_FLAGS "-Wl, --no-allow-shlib-undefined"
 #	)
+set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 11)
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${QT_LIBRARIES} ${OSVR_LIBRARIES})
 
 

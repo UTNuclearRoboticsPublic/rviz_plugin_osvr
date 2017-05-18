@@ -14,6 +14,8 @@
 #include <rviz/frame_manager.h>
 
 #include <osvr/ClientKit/Context.h>
+#include <osvr/ClientKit/Display.h>
+//#include <osvr/ClientKit/DisplayConfig.h>
 #include <osvr/ClientKit/Parameters.h>
 #include <osvr/ClientKit/ServerAutoStartC.h>
 
@@ -23,7 +25,8 @@
 
 namespace rviz_plugin_osvr{
 
-	PluginDisplay::PluginDisplay() : osvr_client_(0), osvr_context_(0), render_widget_(0), scene_node_(0)
+	PluginDisplay::PluginDisplay() : osvr_client_(0), osvr_context_(0), render_widget_(0), scene_node_(0), 
+			fullscreen_property_(0)
 	{
 		Ogre::MaterialManager::getSingleton().setVerbose(true);
 		std::string rviz_path = ros::package::getPath(ROS_PACKAGE_NAME);
@@ -43,6 +46,10 @@ namespace rviz_plugin_osvr{
 	void PluginDisplay::onInitialize()
 	{
 		ROS_INFO("onInitialize");
+
+		fullscreen_property_ = new rviz::BoolProperty( "Render to Oculus", false,
+			"If checked, will render fullscreen on your secondary screen. Otherwise, shows a window.",
+			this, SLOT(onFullScreenChanged()));
 		render_widget_ = new rviz::RenderWidget(rviz::RenderSystem::get());
 		render_widget_->setVisible(false);
 		render_widget_->setWindowTitle("OSVR View");
@@ -63,11 +70,46 @@ namespace rviz_plugin_osvr{
 		
 	}
 
+void PluginDisplay::onFullScreenChanged()
+{
+  if ( !osvr_client_ )
+  {
+    return;
+  }
+
+  if ( fullscreen_property_->getBool() && QApplication::desktop()->numScreens() > 1 )
+  {
+    QRect screen_res = QApplication::desktop()->screenGeometry(0);
+    //render_widget->setWindowFlags();
+	render_widget_->move(screen_res.x(),screen_res.y());
+    render_widget_->setGeometry( screen_res );
+    //render_widget->show();
+    render_widget_->showFullScreen();
+  }
+  else
+  {
+    int x_res = 1280;
+    int y_res = 800;
+	
+	osvr::clientkit::DisplayConfig disp_cfg(*osvr_context_);
+	osvr::clientkit::DisplayDimensions surf_disp_dim = disp_cfg.getDisplayDimensions(2);
+    if (disp_cfg.valid())
+    {
+      x_res = surf_disp_dim.width;
+      y_res = surf_disp_dim.height;
+    }
+	ROS_INFO_STREAM("RES: "<<x_res<<" "<<y_res<<std::endl);
+    int primary_screen = QApplication::desktop()->primaryScreen();
+    QRect screen_res = QApplication::desktop()->screenGeometry( primary_screen );
+    render_widget_->setGeometry( screen_res.x(), screen_res.y(), x_res, y_res );
+    render_widget_->showNormal();
+  }
+}
 
 
 	void PluginDisplay::preRenderTargetUpdate(const Ogre::RenderTargetEvent& evt)
 	{
-		ROS_INFO("preRender callback");
+		//ROS_INFO("preRender callback");
 		updateCamera();
 	}
 
@@ -83,12 +125,11 @@ namespace rviz_plugin_osvr{
 			osvr_client_->setupOgre(scene_manager_, window, scene_node_);
 		}
 		
-		//if (!osvr_context_)
-		//{
-		//	osvr_context_ = new osvr::clientkit::ClientContext("com.osvr.rviz_plugin_osvr");
-		//	std::string disp_desc = osvr_context_->getStringParameter("/display");
-		//	ROS_INFO_STREAM("disp desc " << disp_desc);
-		//}
+		if (!osvr_context_)
+		{
+			osvr_context_ = new osvr::clientkit::ClientContext("com.osvr.rviz_plugin_osvr");
+			ROS_INFO_STREAM("osvr context created"<<std::endl);
+		}
 
 		int x_res = 1280;
 		int y_res = 800;
@@ -121,7 +162,7 @@ namespace rviz_plugin_osvr{
 
 	void PluginDisplay::postRenderTargetUpdate(const Ogre::RenderTargetEvent& evt)
 	{
-		ROS_INFO("postRender callback");
+		//ROS_INFO("postRender callback");
 		Ogre::RenderWindow *window = render_widget_->getRenderWindow();
 		window->swapBuffers();
 	}
@@ -129,7 +170,7 @@ namespace rviz_plugin_osvr{
 
 	void PluginDisplay::update(float wall_dt, float ros_dt)
 	{
-		ROS_INFO("PluginDisplay update");
+		//ROS_INFO("PluginDisplay update");
 		updateCamera();
 		Ogre::RenderWindow *window = render_widget_->getRenderWindow();
 		window->update(false);
@@ -137,7 +178,7 @@ namespace rviz_plugin_osvr{
 
 	void PluginDisplay::updateCamera()
 	{
-		ROS_INFO("PluginDisplay updateCamera");
+		//ROS_INFO("PluginDisplay updateCamera");
 
 		const Ogre::Camera *cam = context_->getViewManager()->getCurrent()->getCamera();
 		Ogre::Vector3 pos = cam->getDerivedPosition();

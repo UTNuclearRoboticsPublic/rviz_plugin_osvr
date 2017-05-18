@@ -10,6 +10,9 @@
 #include "OGRE/OgreCompositionTargetPass.h"
 #include "OGRE/OgreCompositionPass.h"
 
+#include <osvr/ClientKit/ClientKit.h>
+#include <osvr/ClientKit/Display.h>
+
 namespace Ogre
 {
 	class SceneManager;
@@ -50,6 +53,8 @@ protected:
   Ogre::Viewport* viewports_[2];
   Ogre::CompositorInstance* compositors_[2];
 
+  osvr::clientkit::ClientContext osvr_ctx_;
+  osvr::clientkit::DisplayConfig osvr_disp_conf_;
 };
 
 

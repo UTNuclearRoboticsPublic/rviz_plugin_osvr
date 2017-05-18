@@ -1,3 +1,4 @@
 #!/bin/bash
-~/osvr/bin/osvr_server
+cd ~/osvr/bin/
+./osvr_server ../share/osvrcore/osvr_server_config.json
 

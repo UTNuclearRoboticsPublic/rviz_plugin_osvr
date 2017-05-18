@@ -4,6 +4,7 @@
 #include <rviz/display_context.h>
 #include <ros/console.h>
 
+#include "OGRE/OgreMatrix4.h"
 #include "OGRE/OgreSceneManager.h"
 #include "OGRE/OgreRenderWindow.h"
 #include "OGRE/OgreCompositorManager.h"
@@ -14,12 +15,12 @@
 #include <osvr/ClientKit/ClientKit.h>
 #include <osvr/ClientKit/Display.h>
 
-#include <Ogre.h>
 #include "rviz_plugin_osvr/ogre_osvr.h"
 
 namespace rviz_plugin_osvr
 {
-	OsvrClient::OsvrClient() : window_(0), scene_manager_(0), camera_node_(0)
+	OsvrClient::OsvrClient() : window_(0), scene_manager_(0), camera_node_(0),
+			osvr_ctx_("com.rviz.plugOSVR"), osvr_disp_conf_(osvr_ctx_)
 	{
 		for(int i=0;i<2;i++)
 		{
@@ -98,6 +99,7 @@ namespace rviz_plugin_osvr
 		Ogre::CompositorPtr comp = Ogre::CompositorManager::getSingleton().getByName("OsvrRight");
 		comp->getTechnique(0)->getOutputTargetPass()->getPass(0)->setMaterialName("Ogre/Compositor/Osvr/Right");
 
+		//TODO limited to 2 cameras for testing purpose, should be extended to whatever number of cameras and viewports is declared from OSVR
 		for (int i = 0; i < 2; ++i)
 		{
 			camera_node_->attachObject(cameras_[i]);
@@ -137,9 +139,40 @@ namespace rviz_plugin_osvr
 	    //pos = cam->getDerivedPosition();
 	    //ori = cam->getDerivedOrientation();
 		//camera_node_->setOrientation(getOrientation());
-		ROS_INFO("Children: %d",camera_node_->numChildren());
+		
+		if (osvr_ctx_.checkStatus())
+		{
+			osvr_ctx_.update();
+		}
+		if (!osvr_disp_conf_.valid()) return;
+
+		int eye_idx=0;
+		osvr_disp_conf_.forEachEye([&](osvr::clientkit::Eye eye)
+		{
+			if (eye_idx < 2)  
+			{
+				double osvr_view_mat[OSVR_MATRIX_SIZE];
+				if(eye.getViewMatrix(OSVR_MATRIX_COLMAJOR|OSVR_MATRIX_COLVECTORS,osvr_view_mat))
+				{
+					Ogre::Matrix4 ogre_view_mat;
+
+					for(int i=0;i<4;i++)
+					for (int j=0;j<4;j++)
+					ogre_view_mat[j][i] = osvr_view_mat[i*4+j];
+
+					ogre_view_mat.setTrans(Ogre::Vector3(0,0,-2));
+					cameras_[eye_idx]->setCustomViewMatrix(true, ogre_view_mat);
+					Ogre::Matrix4 ident = Ogre::Matrix4::IDENTITY;
+//					cameras_[eye_idx]->setCustomProjectionMatrix(true, ident);
+					ROS_INFO("Eye %d, M1 %.3f", eye_idx, ogre_view_mat[0][0]);
+				}
+			}
+			eye_idx++;
+		});
+//ROS_INFO("Children: %d",camera_node_->numChildren());
 
 	}
+
 
 }
 
