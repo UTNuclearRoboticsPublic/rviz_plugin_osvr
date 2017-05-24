@@ -14,6 +14,7 @@
 
 #include <osvr/ClientKit/ClientKit.h>
 #include <osvr/ClientKit/Display.h>
+#include <osvr/Util/Pose3C.h>
 
 #include "rviz_plugin_osvr/ogre_osvr.h"
 
@@ -154,23 +155,39 @@ namespace rviz_plugin_osvr
 				double osvr_view_mat[OSVR_MATRIX_SIZE];
 				if(eye.getViewMatrix(OSVR_MATRIX_COLMAJOR|OSVR_MATRIX_COLVECTORS,osvr_view_mat))
 				{
-					Ogre::Matrix4 ogre_view_mat;
+				//	Ogre::Matrix4 ogre_view_mat;
 
-					for(int i=0;i<4;i++)
-					for (int j=0;j<4;j++)
-					ogre_view_mat[j][i] = osvr_view_mat[i*4+j];
+				//	for(int i=0;i<4;i++)
+				//	for (int j=0;j<4;j++)
+				//	ogre_view_mat[j][i] = osvr_view_mat[i*4+j];
 
-					ogre_view_mat.setTrans(Ogre::Vector3(0,0,-2));
-					cameras_[eye_idx]->setCustomViewMatrix(true, ogre_view_mat);
-					Ogre::Matrix4 ident = Ogre::Matrix4::IDENTITY;
-//					cameras_[eye_idx]->setCustomProjectionMatrix(true, ident);
-					ROS_INFO("Eye %d, M1 %.3f", eye_idx, ogre_view_mat[0][0]);
+				//	Ogre::Matrix4 ident = Ogre::Matrix4::IDENTITY;
+				//	ident.setTrans(Ogre::Vector3(0,0,-2));
+
+					OSVR_Pose3 pose;
+					eye.getPose(pose);
+					Ogre::Quaternion ori(
+							-(Ogre::Real)osvrQuatGetW(&pose.rotation),
+							-(Ogre::Real)osvrQuatGetX(&pose.rotation),
+							-(Ogre::Real)osvrQuatGetY(&pose.rotation),
+							-(Ogre::Real)osvrQuatGetZ(&pose.rotation));
+
+//					ROS_INFO("rot: %f %f %f %f",rot.x, rot.y, rot.z, rot.w);
+					
+					Ogre::Vector3 pos(
+							(Ogre::Real)pose.translation.data[0],
+							(Ogre::Real)pose.translation.data[1],
+							(Ogre::Real)pose.translation.data[2]);
+
+					cameras_[eye_idx]->setOrientation(ori);
+					cameras_[eye_idx]->setPosition(pos);
+					//cameras_[eye_idx]->setCustomViewMatrix(true, ogre_view_mat);
+					//cameras_[eye_idx]->setCustomProjectionMatrix(true,ogre_view_mat);
+					//ROS_INFO("Eye %d, M1 %.3f", eye_idx, ogre_view_mat[0][0]);
 				}
 			}
 			eye_idx++;
 		});
-//ROS_INFO("Children: %d",camera_node_->numChildren());
-
 	}
 
 
