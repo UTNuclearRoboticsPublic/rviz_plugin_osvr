@@ -35,24 +35,32 @@ namespace rviz_plugin_osvr
 	OsvrClient::~OsvrClient(void)
 	{
 		ROS_INFO("OsvrClient destroyed");
+
+		if(scene_manager_)
+		{
+			if(camera_node_) 
+				scene_manager_->destroySceneNode(camera_node_);
+			if(cameras_[0])
+				scene_manager_->destroyCamera(cameras_[0]);
+			if(cameras_[1])
+				scene_manager_->destroyCamera(cameras_[1]);
+				
+			
+		}
+		if(window_)
+		{
+			window_->removeAllViewports();
+			if(viewports_[0]){}
+				//TODO: Remove viewport
+			if(viewports_[1]){}
+				//TODO: Remove viewport
+
+		}
 	}
 	
 	void OsvrClient::onInitialize()
 	{
 		ROS_INFO("Initializing RViz Plugin for OSVR");
-		//osvr::clientkit::ClientContext context("com.rviz.plugOSVR");
-		//ROS_INFO("OSVR context created");
-
-		//osvr::clientkit::DisplayConfig display;
-		//do {
-		//	ROS_INFO("OSVR: Waiting for display config");
-		//	context.update();
-		//	display = osvr::clientkit::DisplayConfig(context);
-		//} while (!display.valid());
-
-		
-//		ROS_INFO("OSVR: Display config is valid");
-//		ROS_INFO("Showing osvr plugin window...");
 	}
 
 	bool OsvrClient::setupOgre(Ogre::SceneManager *sm, Ogre::RenderWindow *win, Ogre::SceneNode *parent)
@@ -167,10 +175,10 @@ namespace rviz_plugin_osvr
 					OSVR_Pose3 pose;
 					eye.getPose(pose);
 					Ogre::Quaternion ori(
-							-(Ogre::Real)osvrQuatGetW(&pose.rotation),
-							-(Ogre::Real)osvrQuatGetX(&pose.rotation),
-							-(Ogre::Real)osvrQuatGetY(&pose.rotation),
-							-(Ogre::Real)osvrQuatGetZ(&pose.rotation));
+							(Ogre::Real)osvrQuatGetW(&pose.rotation),
+							(Ogre::Real)osvrQuatGetX(&pose.rotation),
+							(Ogre::Real)osvrQuatGetY(&pose.rotation),
+							(Ogre::Real)osvrQuatGetZ(&pose.rotation));
 
 //					ROS_INFO("rot: %f %f %f %f",rot.x, rot.y, rot.z, rot.w);
 					
@@ -181,9 +189,7 @@ namespace rviz_plugin_osvr
 
 					cameras_[eye_idx]->setOrientation(ori);
 					cameras_[eye_idx]->setPosition(pos);
-					//cameras_[eye_idx]->setCustomViewMatrix(true, ogre_view_mat);
-					//cameras_[eye_idx]->setCustomProjectionMatrix(true,ogre_view_mat);
-					//ROS_INFO("Eye %d, M1 %.3f", eye_idx, ogre_view_mat[0][0]);
+//					ROS_INFO_STREAM("POS: "<<pos);
 				}
 			}
 			eye_idx++;
