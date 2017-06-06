@@ -6,37 +6,41 @@ Creates the [OSVR](http://www.osvr.com) stereo display for RViz. It wraps the IM
 *This plugin is inspired by [oculus\_rvis\_plugins](https://github.com/ros-visualization/oculus_rviz_plugins) package.* 
 
 ## Build Instructions
-### rviz\_plugin\_osvr package
-Clone the package into your catkin workspace, build as any other ROS package.
-```
-git clone https://github.com/Veix123/rviz-plugin-osvr.git
-catkin build
-```
-
-### OSVR library
-First, let's make sure we have the required [dependencies](https://github.com/OSVR/OSVR-Docs/blob/master/Getting-Started/Installing/Linux-Build-Instructions.md):
-
+### Setting up OSVR
+This project uses the following OSVR components: [OSVR-Core](https://github.com/OSVR/OSVR-Core) and [libfunctionality](https://github.com/OSVR/libfunctionality). However, before trying to compile those, make sure your system meets the required [dependencies](https://github.com/OSVR/OSVR-Docs/blob/master/Getting-Started/Installing/Linux-Build-Instructions.md).
 ```
 sudo apt update && sudo apt upgrade
 sudo apt install libsdl2-dev libboost1.58-dev libboost-thread1.58-dev libboost-program-options1.58-dev libboost-filesystem-dev libusb-1.0-0-dev
 ```
 
-Make a separate folder for build files and clone [OSVR-Core](https://github.com/OSVR/OSVR-Core) and [libfunctionality](https://github.com/OSVR/libfunctionality) repos. Let's install everything under osvr in our home directory starting with libfunctionality:
-```
-mkdir ~/build && cd ~/build
-git clone --recursive https://github.com/OSVR/libfunctionality.git
-git clone --recursive https://github.com/OSVR/OSVR-Core.git
+The build and install directories in this example are **~/build** and **~/osvr**, respectively. Feel free to modify them according to your needs.
 
-#Build libfunctionality
+#### libfunctionality
+```
+# Create a directory for build files
+mkdir ~/build && cd ~/build
+
+# Clone the source files
+git clone --recursive https://github.com/OSVR/libfunctionality.git
+
+# Build libfunctionality
 cd libfunctionality
 cmake . -DCMAKE_INSTALL_PREFIX=~/osvr
 make
 make install
 ```
 
-The OpenCV3 in ROS-kinetic comes with .cmake files, which are responsible setting up include directories, library paths and all other variables for the build environment. In cmake, projects can be set-up using configurations (such as Release, Debug, etc.). OpenCV defines only one configuration called `NULL`, while osvr uses cmake's default configuration called `RelWithDebInfo`. Hence, running cmake with the default build type will cause opencv to not find its libraries and fails with `*** No rule to make target 'opencv_core-NOTFOUND' ***`.
-The solution is remapping RelWithDebInfo configuration to NONE for each opencv module. We also have to specify the opencv modules and include directories, since some test components were unable to find OpenCV headers.
-So, locate the OSVR-Core/CMakeLists.txt and make the following changes:
+#### OSVR-Core
+Now that we have libfunctionality installed, clone yourself the source of OSVR-Core.
+
+```
+git clone --recursive https://github.com/OSVR/OSVR-Core.git
+```
+
+
+The OpenCV3 in ROS-kinetic comes with .cmake files, which are responsible setting up include directories, library paths and all other variables for the build environment. In cmake, projects can be set-up using configurations (such as Release, Debug, etc.). OpenCV defines only one configuration called **NULL**, while osvr uses cmake's default configuration called **RelWithDebInfo**. Hence, running cmake with the default build type will cause opencv to not find its libraries and fails with `*** No rule to make target 'opencv_core-NOTFOUND' ***`.
+The solution is remapping **RelWithDebInfo** configuration to **NONE** for each OpenCV module. We also have to specify the opencv modules and include directories, since some test components were unable to find OpenCV headers.  
+So, locate the **~/build/OSVR-Core/CMakeLists.txt** and make the following changes:
 
 ```
 ...
@@ -71,7 +75,7 @@ So, locate the OSVR-Core/CMakeLists.txt and make the following changes:
 ...
 ```
 
-Now we're ready to build osvr with OpenCV. Remember to build it out of source using custom install prefix. You can make compiling faster with "make -j4" (or any other integer) on a multi-core system.
+Now we're ready to build OSVR with OpenCV. Remember to build it out of source using custom install prefix. You can make compiling faster with "make -j4" (or any other integer) on a multi-core system.
 
 ```
 #Build OSVR-core
@@ -94,10 +98,17 @@ And we're good to roll.
 Let's fire up the server with default config for HDK2 headset.  
 `~/osvr/bin/osvr_server ~/osvr/share/osvrcore/osvr_server_config.json`
 
-Open another terminal and verify that osvr is working.  
+Open another terminal and verify that OSVR is working.  
 `~/osvr/bin/OpenGLSample`
 
+### Setting up rviz\_plugin\_osvr package
+Clone the package into your catkin workspace, build as any other ROS package.
+```
+git clone https://github.com/Veix123/rviz-plugin-osvr.git
+catkin build
+```
+
 ## USAGE
-The plugin needs a running `osvr_server`, which you can either add to a system start-up or run via launch scripts:  
+The plugin needs a running **osvr_server**, which you can either add to a system start-up or run via launch scripts:  
 `roslaunch rviz_plugin_osvr ubot_demo.launch`  
 Open up RViz, load the osvr display plugin, and have fun!
