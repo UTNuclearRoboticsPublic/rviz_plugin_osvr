@@ -38,23 +38,35 @@ namespace rviz_plugin_osvr
 
 		if(scene_manager_)
 		{
-			if(camera_node_) 
+			if(camera_node_)
+			{	
 				scene_manager_->destroySceneNode(camera_node_);
+				camera_node_=0;
+			}
 			if(cameras_[0])
+			{
 				scene_manager_->destroyCamera(cameras_[0]);
+				cameras_[0]=0;
+			}
 			if(cameras_[1])
+			{
 				scene_manager_->destroyCamera(cameras_[1]);
-				
-			
+				cameras_[1]=0;
+			}
 		}
 		if(window_)
 		{
-			window_->removeAllViewports();
-			if(viewports_[0]){}
-				//TODO: Remove viewport
-			if(viewports_[1]){}
-				//TODO: Remove viewport
+			for(int i=0;i<2;i++)
+			{
+				Ogre::CompositorManager::getSingletonPtr()->removeCompositorChain(viewports_[i]);
+			}
 
+			window_->removeAllViewports();
+			for(int i=0;i<2;i++)
+			{
+				viewports_[i]=0;
+				compositors_[i]=0;
+			}
 		}
 	}
 	
@@ -142,7 +154,7 @@ namespace rviz_plugin_osvr
 		return true;
 	}
 
-	void OsvrClient::update()
+	void OsvrClient::update(float wall_dt, float ros_dt)
 	{
 	    //const Ogre::Camera *cam = context_->getViewManager()->getCurrent()->getCamera();
 	    //pos = cam->getDerivedPosition();
@@ -163,32 +175,41 @@ namespace rviz_plugin_osvr
 				double osvr_view_mat[OSVR_MATRIX_SIZE];
 				if(eye.getViewMatrix(OSVR_MATRIX_COLMAJOR|OSVR_MATRIX_COLVECTORS,osvr_view_mat))
 				{
-				//	Ogre::Matrix4 ogre_view_mat;
+					Ogre::Matrix4 ogre_view_mat;
 
-				//	for(int i=0;i<4;i++)
-				//	for (int j=0;j<4;j++)
-				//	ogre_view_mat[j][i] = osvr_view_mat[i*4+j];
+					for(int i=0;i<4;i++)
+					for (int j=0;j<4;j++)
+					ogre_view_mat[j][i] = osvr_view_mat[i*4+j];
+				//	cameras_[eye_idx]->setCustomViewMatrix(true,ogre_view_mat.inverse());
 
 				//	Ogre::Matrix4 ident = Ogre::Matrix4::IDENTITY;
 				//	ident.setTrans(Ogre::Vector3(0,0,-2));
 
 					OSVR_Pose3 pose;
 					eye.getPose(pose);
-					Ogre::Quaternion ori(
-							(Ogre::Real)osvrQuatGetW(&pose.rotation),
-							(Ogre::Real)osvrQuatGetX(&pose.rotation),
-							(Ogre::Real)osvrQuatGetY(&pose.rotation),
-							(Ogre::Real)osvrQuatGetZ(&pose.rotation));
+					Ogre::Quaternion ori;
+					ori.w = (Ogre::Real)osvrQuatGetW(&pose.rotation);
+					ori.x = -(Ogre::Real)osvrQuatGetX(&pose.rotation);
+					ori.y = -(Ogre::Real)osvrQuatGetY(&pose.rotation);
+					ori.z = (Ogre::Real)osvrQuatGetZ(&pose.rotation);
+					ori.normalise();
 
-//					ROS_INFO("rot: %f %f %f %f",rot.x, rot.y, rot.z, rot.w);
+//					ROS_INFO("rot: %f %f %f %f",ori.x, ori.y, ori.z, ori.w);
 					
 					Ogre::Vector3 pos(
 							(Ogre::Real)pose.translation.data[0],
 							(Ogre::Real)pose.translation.data[1],
 							(Ogre::Real)pose.translation.data[2]);
 
+
+					//Ogre::Quaternion oneEightyTurnY(Ogre::Degree(180),Ogre::Vector3::UNIT_Y);
+					//Ogre::Quaternion oneEightyTurnZ(Ogre::Degree(180),Ogre::Vector3::UNIT_Z);
+
 					cameras_[eye_idx]->setOrientation(ori);
-					cameras_[eye_idx]->setPosition(pos);
+					//cameras_[eye_idx]->setOrientation(oneEightyTurnZ*oneEightyTurnY*ori);
+//					Ogre::Quaternion curOri = cameras_[eye_idx]->getOrientation();
+//					cameras_[eye_idx]->setOrientation(newOri*curOri);
+//					cameras_[eye_idx]->setPosition(pos);
 //					ROS_INFO_STREAM("POS: "<<pos);
 				}
 			}

@@ -43,7 +43,7 @@ public:
   ~OsvrClient(void);
   void onInitialize();
   bool setupOgre(Ogre::SceneManager *sm, Ogre::RenderWindow *win, Ogre::SceneNode *parent);
-  void update();
+  void update(float wall_dt, float ros_dt);
 
 protected:
   Ogre::RenderWindow* window_;
