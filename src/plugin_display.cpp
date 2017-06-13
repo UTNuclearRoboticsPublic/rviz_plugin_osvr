@@ -208,7 +208,7 @@ void PluginDisplay::postRenderTargetUpdate(const Ogre::RenderTargetEvent& evt)
 {
 	//ROS_INFO("postRender callback");
 	Ogre::RenderWindow *window = render_widget_->getRenderWindow();
-	window->swapBuffers();
+	//window->swapBuffers();
 }
 
 
@@ -217,7 +217,7 @@ void PluginDisplay::update(float wall_dt, float ros_dt)
 	//ROS_INFO("PluginDisplay update");
 	updateCamera(wall_dt, ros_dt);
 	Ogre::RenderWindow *window = render_widget_->getRenderWindow();
-	window->update(false);
+	window->update(true);
 }
 
 void PluginDisplay::updateCamera(float wall_dt, float ros_dt)

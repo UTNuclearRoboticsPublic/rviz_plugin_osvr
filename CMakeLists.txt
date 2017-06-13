@@ -50,10 +50,18 @@ else()
 	message(FATAL_ERROR "osvr")
 endif()
 
-find_package(PkgConfig)
+find_package(PkgConfig REQUIRED) # required for packaged below
+
+# OGRE
 pkg_check_modules(OGRE OGRE)
 include_directories(${OGRE_INCLUDE_DIRS})
 message(STATUS "OGRE LIBRARIES: ${OGRE_INCLUDE_DIRS}")
+
+# JSONCPP
+pkg_check_modules(JSONCPP jsoncpp)
+include_directories(${JSONCPP_INCLUDE_DIRS})
+message(STATUS "jsoncpp LIBRARIES: ${JSONCPP_INCLUDE_DIRS}")
+
 
 
 set(SRC_FILES
@@ -75,7 +83,7 @@ SET(CMAKE_SHARED_LINKER_FLAGS -Wl,--no-allow-shlib-undefined,--no-undefined)
 #	LINK_FLAGS "-Wl, --no-allow-shlib-undefined"
 #	)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 11)
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${QT_LIBRARIES} ${OSVR_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${QT_LIBRARIES} ${OSVR_LIBRARIES} ${JSONCPP_LIBRARIES})
 
 
 #############

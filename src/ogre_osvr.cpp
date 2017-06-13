@@ -16,6 +16,10 @@
 #include <osvr/ClientKit/Display.h>
 #include <osvr/Util/Pose3C.h>
 
+#include <rviz_plugin_osvr/osvr_display_config_built_in_osvr_hdks.h>
+#include <json/reader.h>
+#include <json/value.h>
+
 #include "rviz_plugin_osvr/ogre_osvr.h"
 
 namespace rviz_plugin_osvr
@@ -114,8 +118,9 @@ namespace rviz_plugin_osvr
 //		pParamsLeft->setNamedConstant("ChromAbParam", hmdchrom);
 //		pParamsRight->setNamedConstant("ChromAbParam", hmdchrom);
 
-		pParamsLeft->setNamedConstant("LensCenter", 0.5f );
-		pParamsRight->setNamedConstant("LensCenter", 0.5f );
+		pParamsLeft->setNamedConstant("LensCenter", 0.5f + g_defaultProjectionCenterOffset / 2.0f );
+		pParamsRight->setNamedConstant("LensCenter", 0.5f - g_defaultProjectionCenterOffset / 2.0f );
+
 
 		Ogre::CompositorPtr comp = Ogre::CompositorManager::getSingleton().getByName("OsvrRight");
 		comp->getTechnique(0)->getOutputTargetPass()->getPass(0)->setMaterialName("Ogre/Compositor/Osvr/Right");
@@ -151,6 +156,9 @@ namespace rviz_plugin_osvr
 		}
 
 
+		loadDistortionMesh();
+
+
 		return true;
 	}
 
@@ -167,11 +175,24 @@ namespace rviz_plugin_osvr
 		}
 		if (!osvr_disp_conf_.valid()) return;
 
+
+
 		int eye_idx=0;
 		osvr_disp_conf_.forEachEye([&](osvr::clientkit::Eye eye)
 		{
 			if (eye_idx < 2)  
 			{
+				eye.forEachSurface([&](osvr::clientkit::Surface surface)
+				{
+					try
+					{
+					ROS_INFO("COP: %f", 
+							surface.getRadialDistortion().centerOfProjection.data[0]);
+					}
+					catch(std::runtime_error e ){}
+				});
+
+
 				double osvr_view_mat[OSVR_MATRIX_SIZE];
 				if(eye.getViewMatrix(OSVR_MATRIX_COLMAJOR|OSVR_MATRIX_COLVECTORS,osvr_view_mat))
 				{
@@ -217,6 +238,27 @@ namespace rviz_plugin_osvr
 		});
 	}
 
+	
+	void OsvrClient::loadDistortionMesh()
+	{
+
+		ROS_INFO("Loading Distortion Mesh ...");
+		struct BuiltInKeysAndData {
+			const char* key;
+			const char* dataString;
+		};
+
+		static const std::initializer_list<BuiltInKeysAndData>
+			BUILT_IN_MONO_POINT_SAMPLES = {
+				{"OSVR_HDK_13_V1", osvr_display_config_built_in_osvr_hdk13_v1},
+				{"OSVR_HDK_13_V2", osvr_display_config_built_in_osvr_hdk13_v2},
+				{"OSVR_HDK_20_V1", osvr_display_config_built_in_osvr_hdk20_v1}};
+
+		Json::Reader reader;
+
+
+
+	}
 
 }
 

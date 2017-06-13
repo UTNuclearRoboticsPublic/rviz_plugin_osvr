@@ -29,8 +29,8 @@ namespace
 	const float g_defaultFarClip = 10000.0f;
 	const float g_defaultIPD = 0.064f;
 	const Ogre::ColourValue g_defaultViewportColour(97 / 255.0f, 97 / 255.0f, 200 / 255.0f);
-	const float g_defaultProjectionCentreOffset = 0.14529906f;
-	const float g_defaultDistortion[4] = {1.0f, 0.22f, 0.24f, 0.0f};
+	const float g_defaultProjectionCenterOffset = 0.058;
+	const float g_defaultDistortion[4] = {1.0f, -1.74f, 5.15f, -1.27f};
 	const float g_defaultChromAb[4] = {0.996, -0.004, 1.014, 0.0f};
 }
 namespace rviz_plugin_osvr
@@ -55,6 +55,9 @@ protected:
 
   osvr::clientkit::ClientContext osvr_ctx_;
   osvr::clientkit::DisplayConfig osvr_disp_conf_;
+
+private:
+  void loadDistortionMesh();
 };
 
 
