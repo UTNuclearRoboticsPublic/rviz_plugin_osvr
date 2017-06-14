@@ -2,7 +2,7 @@
 	<param name="robot_description" command="$(find xacro)/xacro.py '$(find youbot_description)/robots/youbot.urdf.xacro'"/>
 
 	<node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher"> 
-		<param name="/use_gui" value="true"/>
+		<param name="/use_gui" value="false"/>
 	</node>
 
 	<!--node name="osvr_server" pkg="rviz_plugin_osvr" type="start_osvr_server.sh" /-->

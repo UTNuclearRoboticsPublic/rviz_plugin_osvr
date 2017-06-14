@@ -243,6 +243,7 @@ namespace rviz_plugin_osvr
 	{
 
 		ROS_INFO("Loading Distortion Mesh ...");
+
 		struct BuiltInKeysAndData {
 			const char* key;
 			const char* dataString;
@@ -253,9 +254,42 @@ namespace rviz_plugin_osvr
 				{"OSVR_HDK_13_V1", osvr_display_config_built_in_osvr_hdk13_v1},
 				{"OSVR_HDK_13_V2", osvr_display_config_built_in_osvr_hdk13_v2},
 				{"OSVR_HDK_20_V1", osvr_display_config_built_in_osvr_hdk20_v1}};
+		
+		std::string builtInString;
+		bool found = false;
+		const std::string builtInKey = "OSVR_HDK_20_V1"; //TODO: make this user selectable
+		for (auto& knownEntry : BUILT_IN_MONO_POINT_SAMPLES) 
+		{
+			if (builtInKey == knownEntry.key)
+			{
+				builtInString = knownEntry.dataString;
+				found = true;
+				break;
+			}
+		}
+
+		if (!found)
+		{
+			ROS_INFO("Built in distortion %s not found!", builtInKey);
+			return;
+		}
 
 		Json::Reader reader;
+		Json::Value builtInData;
+		if (!reader.parse(builtInString, builtInData, false))
+		{
+			ROS_INFO("JSON parsing error: %s", reader.getFormattedErrorMessages());
+			return;
+		}
 
+		auto const& myDistortion = builtInData["display"]["hmd"]["distortion"];
+		if (myDistortion.isNull()) 
+		{
+			ROS_INFO_STREAM("Distortion data not found from built in distortion string.");
+			return;
+		}
+
+		ROS_INFO_STREAM("ALL SYSTEMS GO!");
 
 
 	}
