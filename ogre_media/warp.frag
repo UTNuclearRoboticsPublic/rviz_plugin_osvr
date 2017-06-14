@@ -45,7 +45,7 @@ void main(void)
 {
 // Radial distortion correction
 //	vec2 tc = HmdWarp(Texcoord);
-//	vec2 tc = Texcoord;
-	vec2 tc = Undistort(Texcoord);
+	vec2 tc = Texcoord;
+//	vec2 tc = Undistort(Texcoord);
   gl_FragColor = texture2D(WarpTexture, tc);
 }
