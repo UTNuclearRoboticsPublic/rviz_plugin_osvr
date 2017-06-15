@@ -12,6 +12,8 @@
 #include "OGRE/OgreCompositorInstance.h"
 #include "OGRE/OgreCompositionTargetPass.h"
 #include "OGRE/OgreCompositionPass.h"
+#include "OGRE/OgreHardwarePixelBuffer.h"
+#include "OGRE/OgreManualObject.h"
 
 #include <osvr/ClientKit/ClientKit.h>
 #include <osvr/ClientKit/Display.h>
@@ -30,9 +32,10 @@ namespace rviz_plugin_osvr
 	{
 		for(int i=0;i<2;i++)
 		{
-			cameras_[i]=0;
-			viewports_[i]=0;
-			compositors_[i]=0;
+			cameras_[i] = 0;
+			external_camera_ = 0;
+			viewports_[i] = 0;
+			external_viewport_ = 0;
 		}
 		ROS_INFO("OsvrClient created");
 	}
@@ -70,8 +73,9 @@ namespace rviz_plugin_osvr
 			for(int i=0;i<2;i++)
 			{
 				viewports_[i]=0;
-				compositors_[i]=0;
+				//compositors_[i]=0;
 			}
+			//TODO: remove materials and textures
 		}
 	}
 	
@@ -91,39 +95,95 @@ namespace rviz_plugin_osvr
 		}
 		else
 		{
-			camera_node = sm->getRootSceneNode()->createChildSceneNode("StereoCameraNode");
+			camera_node_ = sm->getRootSceneNode()->createChildSceneNode("StereoCameraNode");
 		}
 		
+		// Create external scenemanager and viewport for distortion mesh.  
+		external_scene_manager_ = rviz::RenderSystem::get()->root()->createSceneManager(Ogre::ST_GENERIC);
+		external_scene_manager_ ->setAmbientLight(Ogre::ColourValue(0.5, 0.5, 0.5));
+		
+		external_camera_ = external_scene_manager_ -> createCamera("OsvrCameraExternal");
+		external_camera_ -> setFarClipDistance(50);
+		external_camera_ -> setNearClipDistance(0.001);
+		external_camera_ -> setProjectionType(Ogre::PT_ORTHOGRAPHIC);
+		external_camera_ -> setOrthoWindow(2,2);
 
-		cameras_[0] = sm->createCamera("CameraLeft");
-		cameras_[1] = sm->createCamera("CameraRight");
+		external_viewport_ = win->addViewport(external_camera_);
+		external_viewport_ -> setBackgroundColour(g_defaultViewportColour);
+		external_viewport_ -> setOverlaysEnabled(true);
 
-		Ogre::MaterialPtr matLeft = Ogre::MaterialManager::getSingleton().getByName("Ogre/Compositor/Osvr");
-		Ogre::MaterialPtr matRight = matLeft->clone("Ogre/Compositor/Osvr/Right");
-		  
-		Ogre::GpuProgramParametersSharedPtr pParamsLeft =
-			matLeft->getTechnique(0)->getPass(0)->getFragmentProgramParameters();
-		Ogre::GpuProgramParametersSharedPtr pParamsRight =
-			matRight->getTechnique(0)->getPass(0)->getFragmentProgramParameters();
+		
 
-		//warp describes the transformation from the rectangular image to warped image, which suits for the head mounted display
-		Ogre::Vector4 hmdwarp = Ogre::Vector4(g_defaultDistortion[0], g_defaultDistortion[1], g_defaultDistortion[2],
-				                            g_defaultDistortion[3]);
-		pParamsLeft->setNamedConstant("HmdWarpParam", hmdwarp);
-		pParamsRight->setNamedConstant("HmdWarpParam", hmdwarp);
-//		Ogre::Vector4 hmdchrom = Ogre::Vector4(g_defaultChromAb);
-//		pParamsLeft->setNamedConstant("ChromAbParam", hmdchrom);
-//		pParamsRight->setNamedConstant("ChromAbParam", hmdchrom);
-		pParamsLeft->setNamedConstant("LensCenter", 0.5f + g_defaultProjectionCenterOffset / 2.0f );
-		pParamsRight->setNamedConstant("LensCenter", 0.5f - g_defaultProjectionCenterOffset / 2.0f );
-
-		Ogre::CompositorPtr comp = Ogre::CompositorManager::getSingleton().getByName("OsvrRight");
-		comp->getTechnique(0)->getOutputTargetPass()->getPass(0)->setMaterialName("Ogre/Compositor/Osvr/Right");
-
-		//TODO limited to 2 cameras for testing purpose, should be extended to whatever number of cameras and viewports is declared from OSVR
 		for (int i = 0; i < 2; ++i)
 		{
+			// Setup cameras
+			cameras_[i] = sm->createCamera(i==0 ? "OsvrCameraLeft" : "OsvrCameraRight");
 			camera_node_->attachObject(cameras_[i]);
+			cameras_[i]->setNearClipDistance(g_defaultNearClip);
+			cameras_[i]->setFarClipDistance(g_defaultFarClip);
+			cameras_[i]->setPosition((i * 2 - 1) * g_defaultIPD * 0.5f, 0, 0);
+			cameras_[i]->setFOVy(Ogre::Degree(90));
+
+
+			// Create Textures and materials for viewports
+			textures_[i] = Ogre::TextureManager::getSingleton().createManual(
+					i==0 ? "OsvrTextureLeft" : "OsvrTextureRight",
+					"rviz_plugin_osvr",
+					Ogre::TEX_TYPE_2D,
+					1182,
+					1461,
+					0,
+					Ogre::PF_R8G8B8,
+					Ogre::TU_RENDERTARGET);
+			
+			materials_[i] = Ogre::MaterialManager::getSingleton().create(
+					i==0 ? "OsvrMaterialLeft" : "OsvrMaterialRight",
+					"rviz_plugin_osvr");
+			Ogre::Pass* pass = materials_[i]->getTechnique(0)->getPass(0);
+			pass->createTextureUnitState();
+			pass->getTextureUnitState(0)->setTexture(textures_[i]);
+
+			// Create viewport for each camera
+			viewports_[i] = textures_[i]->getBuffer()->getRenderTarget()->addViewport(cameras_[i]);
+			viewports_[i]->setBackgroundColour(g_defaultViewportColour);
+			viewports_[i]->setClearEveryFrame(true);
+			viewports_[i]->setOverlaysEnabled(false);
+			viewports_[i]->setShadowsEnabled(true);
+		}
+
+		//pass->setFragmentProgram("OsvrFragmentProgram");
+		//pass->setVertexProgram("OsvrVertexProgram");
+
+		//Ogre::GpuProgramParametersSharedPtr shader_params = pass->getFragmentProgramParameters();
+		//shader_params->setNamedConstant("LensCenter", 0.5f + g_defaultProjectionCenterOffset / 
+		//		2.0f * (i==0) ? 1 : -1);
+		//pass->setFragmentProgram("OsvrFragmentProgram");
+		//pass->setVertexProgram("OsvrVertexProgram");
+
+		//Ogre::GpuProgramParametersSharedPtr shader_params = pass->getFragmentProgramParameters();
+		//shader_params->setNamedConstant("LensCenter", 0.5f + g_defaultProjectionCenterOffset / 
+		//		2.0f * (i==0) ? 1 : -1);
+
+
+		Ogre::SceneNode* meshNode = external_scene_manager_ -> getRootSceneNode() -> createChildSceneNode();
+
+		Ogre::ManualObject *extObjLeft = external_scene_manager_->createManualObject("OsvrObjectLeft");
+		Ogre::ManualObject *extObjRight = external_scene_manager_->createManualObject("OsvrObjectRight");
+
+		parseDistortionMeshes();
+
+		extObjLeft->begin("OsvrMaterialLeft", Ogre::RenderOperation::OT_TRIANGLE_LIST);
+		extObjLeft->colour(1,1,1);
+		extObjLeft->textureCoord(0.5,0.5);
+
+		extObjLeft->end();
+
+		meshNode->attachObject(extObjLeft);
+
+		//extObjRight->begin("OsvrMaterialRight", Ogre::RenderOperation::OT_TRIANGLE_LIST);
+
+
+
 			//if (m_stereoConfig)
 			//{
 			//	// Setup cameras.
@@ -136,26 +196,32 @@ namespace rviz_plugin_osvr
 			//}
 			//else
 			//{
-				cameras_[i]->setNearClipDistance(g_defaultNearClip);
-				cameras_[i]->setFarClipDistance(g_defaultFarClip);
-				cameras_[i]->setPosition((i * 2 - 1) * g_defaultIPD * 0.5f, 0, 0);
-				cameras_[i]->setFOVy(Ogre::Radian(1.2));
-			//}
+			
 
-			viewports_[i] = win->addViewport(cameras_[i], i, 0.5f * i, 0, 0.5f, 1.0f);
-			viewports_[i]->setBackgroundColour(g_defaultViewportColour);
-			compositors_[i] = Ogre::CompositorManager::getSingleton().addCompositor(viewports_[i],
-															   i == 0 ? "OsvrLeft" : "OsvrRight");
-			compositors_[i]->setEnabled(true);
-								
-		}
+//		cameras_[0] = sm->createCamera("CameraLeft");
+//		cameras_[1] = sm->createCamera("CameraRight");
 
-		external_scene_manager_ = rviz::RenderSystem::get()->root()->createSceneManager(Ogre::ST_GENERIC);
-		external_scene_manager_ ->setAmbientLight(Ogre::ColourValue(0.5, 0.5, 0.5));
+//		Ogre::MaterialPtr matLeft = Ogre::MaterialManager::getSingleton().getByName("Ogre/Compositor/Osvr");
+//		Ogre::MaterialPtr matRight = matLeft->clone("Ogre/Compositor/Osvr/Right");
 
-		parseDistortionMeshes();
+//		Ogre::Vector4 hmdchrom = Ogre::Vector4(g_defaultChromAb);
+//		pParamsLeft->setNamedConstant("ChromAbParam", hmdchrom);
+//		pParamsRight->setNamedConstant("ChromAbParam", hmdchrom);
 
+//		Ogre::CompositorPtr comp = Ogre::CompositorManager::getSingleton().getByName("OsvrRight");
+//		comp->getTechnique(0)->getOutputTargetPass()->getPass(0)->setMaterialName("Ogre/Compositor/Osvr/Right");
+			//compositors_[i] = Ogre::CompositorManager::getSingleton().addCompositor(viewports_[i],
+			//												   i == 0 ? "OsvrLeft" : "OsvrRight");
+			//compositors_[i]->setEnabled(true);
+			//
 
+//		Ogre::GpuProgramParametersSharedPtr pParamsRight =
+//			matRight->getTechnique(0)->getPass(0)->getFragmentProgramParameters();
+
+		//warp describes the transformation from the rectangular image to warped image, which suits for the head mounted display
+//		pParamsRight->setNamedConstant("HmdWarpParam", hmdwarp);
+//		pParamsRight->setNamedConstant("LensCenter", 0.5f - g_defaultProjectionCenterOffset / 2.0f );
+//
 		return true;
 	}
 

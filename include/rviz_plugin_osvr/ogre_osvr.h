@@ -67,11 +67,15 @@ namespace rviz_plugin_osvr
 		protected:
 			Ogre::RenderWindow* window_;
 			Ogre::SceneManager* scene_manager_;
-			Ogre::SceneManager* external_scene_manager_;
 			Ogre::SceneNode* camera_node_;
 			Ogre::Camera* cameras_[2];
 			Ogre::Viewport* viewports_[2];
-			Ogre::CompositorInstance* compositors_[2];
+			Ogre::TexturePtr textures_[2];
+			Ogre::MaterialPtr materials_[2];
+
+			Ogre::SceneManager* external_scene_manager_;
+			Ogre::Viewport* external_viewport_;
+			Ogre::Camera* external_camera_;
 
 			osvr::clientkit::ClientContext osvr_ctx_;
 			osvr::clientkit::DisplayConfig osvr_disp_conf_;

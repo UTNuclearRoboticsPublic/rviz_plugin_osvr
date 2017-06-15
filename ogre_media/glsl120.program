@@ -1,10 +1,10 @@
 
-vertex_program rviz_plugin_osvr/glsl120/warp.vert glsl
+vertex_program OsvrVertexProgram glsl
 {
   source warp.vert
 }
 
-fragment_program rviz_plugin_osvr/glsl120/warp.frag glsl
+fragment_program OsvrFragmentProgram glsl
 {
   source warp.frag
   default_params
