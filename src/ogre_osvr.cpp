@@ -82,6 +82,15 @@ namespace rviz_plugin_osvr
 	void OsvrClient::onInitialize()
 	{
 		ROS_INFO("Initializing RViz Plugin for OSVR");
+		DistortionNames dist_names = distortion_.getAvailableDistortionNames();
+		ROS_INFO("Available distortions:");
+		for(auto& dist_name : dist_names)
+		{
+			ROS_INFO_STREAM("/t"<<dist_name);
+		}
+
+		distortion_.parseFromJson(dist_names[2]);
+		
 	}
 
 	bool OsvrClient::setupOgre(Ogre::SceneManager *sm, Ogre::RenderWindow *win, Ogre::SceneNode *parent)
@@ -106,7 +115,7 @@ namespace rviz_plugin_osvr
 		external_camera_ -> setFarClipDistance(50);
 		external_camera_ -> setNearClipDistance(0.001);
 		external_camera_ -> setProjectionType(Ogre::PT_ORTHOGRAPHIC);
-		external_camera_ -> setOrthoWindow(2,2);
+		external_camera_ -> setOrthoWindow(2,1);
 
 		external_viewport_ = win->addViewport(external_camera_);
 		external_viewport_ -> setBackgroundColour(g_defaultViewportColour);
@@ -151,34 +160,46 @@ namespace rviz_plugin_osvr
 			viewports_[i]->setShadowsEnabled(true);
 		}
 
-		//pass->setFragmentProgram("OsvrFragmentProgram");
-		//pass->setVertexProgram("OsvrVertexProgram");
-
-		//Ogre::GpuProgramParametersSharedPtr shader_params = pass->getFragmentProgramParameters();
-		//shader_params->setNamedConstant("LensCenter", 0.5f + g_defaultProjectionCenterOffset / 
-		//		2.0f * (i==0) ? 1 : -1);
-		//pass->setFragmentProgram("OsvrFragmentProgram");
-		//pass->setVertexProgram("OsvrVertexProgram");
-
-		//Ogre::GpuProgramParametersSharedPtr shader_params = pass->getFragmentProgramParameters();
-		//shader_params->setNamedConstant("LensCenter", 0.5f + g_defaultProjectionCenterOffset / 
-		//		2.0f * (i==0) ? 1 : -1);
-
-
 		Ogre::SceneNode* meshNode = external_scene_manager_ -> getRootSceneNode() -> createChildSceneNode();
+		MonoPointDistortionMeshDescriptions mono_meshes = parseDistortionMeshes();
 
-		Ogre::ManualObject *extObjLeft = external_scene_manager_->createManualObject("OsvrObjectLeft");
-		Ogre::ManualObject *extObjRight = external_scene_manager_->createManualObject("OsvrObjectRight");
+	//TODO: This will result with an error when more than two meshes are parsed!!!	
+		unsigned int eyeIdx = 0;
+		for(auto& mono_mesh : mono_meshes) // One mapping per eye
+		{
+			Ogre::ManualObject *manObj = external_scene_manager_->createManualObject(
+					(eyeIdx==0) ? "OsvrObjectLeft" : "OsvrObjectRight");
+			manObj->begin((eyeIdx==0) ? "OsvrMaterialLeft" : "OsvrMaterialRight",
+				   	Ogre::RenderOperation::OT_LINE_STRIP);
+			manObj->colour(1,1,1);
+			//manObj->textureCoord(0.5, 0.5); 
+			
+			for(auto& elt : mono_mesh)
+			{
+				manObj->position(elt[0][0] - eyeIdx, elt[0][1], 0.0);
+				manObj->textureCoord(elt[1][0], elt[1][1]);
+			}
 
-		parseDistortionMeshes();
+			manObj->end();
+			meshNode->attachObject(manObj);
+			eyeIdx++;
+		}
 
-		extObjLeft->begin("OsvrMaterialLeft", Ogre::RenderOperation::OT_TRIANGLE_LIST);
-		extObjLeft->colour(1,1,1);
-		extObjLeft->textureCoord(0.5,0.5);
+		// Move mesh vertically to the center and away from the origin.
+		meshNode->setPosition(0,-0.5,-1);
 
-		extObjLeft->end();
+		//pass->setFragmentProgram("OsvrFragmentProgram");
+		//pass->setVertexProgram("OsvrVertexProgram");
 
-		meshNode->attachObject(extObjLeft);
+		//Ogre::GpuProgramParametersSharedPtr shader_params = pass->getFragmentProgramParameters();
+		//shader_params->setNamedConstant("LensCenter", 0.5f + g_defaultProjectionCenterOffset / 
+		//		2.0f * (i==0) ? 1 : -1);
+		//pass->setFragmentProgram("OsvrFragmentProgram");
+		//pass->setVertexProgram("OsvrVertexProgram");
+
+		//Ogre::GpuProgramParametersSharedPtr shader_params = pass->getFragmentProgramParameters();
+		//shader_params->setNamedConstant("LensCenter", 0.5f + g_defaultProjectionCenterOffset / 
+		//		2.0f * (i==0) ? 1 : -1);
 
 		//extObjRight->begin("OsvrMaterialRight", Ogre::RenderOperation::OT_TRIANGLE_LIST);
 
@@ -299,114 +320,6 @@ namespace rviz_plugin_osvr
 			}
 			eye_idx++;
 		});
-	}
-
-	
-	MonoPointDistortionMeshDescriptions OsvrClient::parseDistortionMeshes()
-	{
-
-		ROS_INFO("Loading Distortion Mesh ...");
-
-		MonoPointDistortionMeshDescriptions mesh; /// Mesh, to be returned.
-		auto withError = [&] // Return empty mesh in case of errors
-		{
-			ROS_INFO("FAILED, returning empty mesh!");
-			mesh.clear();
-			return mesh;
-		};
-
-		struct BuiltInKeysAndData {
-			const char* key;
-			const char* dataString;
-		};
-
-		static const std::initializer_list<BuiltInKeysAndData>
-			BUILT_IN_MONO_POINT_SAMPLES = {
-				{"OSVR_HDK_13_V1", osvr_display_config_built_in_osvr_hdk13_v1},
-				{"OSVR_HDK_13_V2", osvr_display_config_built_in_osvr_hdk13_v2},
-				{"OSVR_HDK_20_V1", osvr_display_config_built_in_osvr_hdk20_v1}};
-		
-		std::string builtInString;
-		bool found = false;
-		const std::string builtInKey = "OSVR_HDK_20_V1"; //TODO: make this user selectable
-		for (auto& knownEntry : BUILT_IN_MONO_POINT_SAMPLES) 
-		{
-			if (builtInKey == knownEntry.key)
-			{
-				builtInString = knownEntry.dataString;
-				found = true;
-				break;
-			}
-		}
-
-		if (!found)
-		{
-			ROS_WARN_STREAM("Built in distortion " << builtInKey << " not found!");
-			return withError();
-		}
-
-		Json::Reader reader;
-		Json::Value builtInData;
-		if (!reader.parse(builtInString, builtInData, false))
-		{
-			ROS_WARN_STREAM("JSON parsing error: " << reader.getFormattedErrorMessages());
-			return withError();
-		}
-
-		auto const& distortion = builtInData["display"]["hmd"]["distortion"];
-		if (distortion.isNull()) 
-		{
-			ROS_WARN("Distortion data not found from built in distortion string.");
-			return withError();
-		}
-
-
-		ROS_INFO("Processing JSON data into mono point samples description structure.");
-		Json::Value const& eyeArray = distortion["mono_point_samples"];
-		if (eyeArray.isNull() || eyeArray.empty()) {
-				ROS_WARN_STREAM("Couldn't find non-empty distortion mono "
-						"pointdistortion in data from " << builtInKey);
-			return withError();
-
-		}
-
-		for (auto& pointArray : eyeArray) {
-			MonoPointDistortionMeshDescription eye;
-			if (pointArray.empty()) {
-				ROS_WARN_STREAM("Empty distortion mono point distortion list for eye "
-						"in data from " << builtInKey);
-				return withError();
-
-			}
-			using Double2 = std::array<double, 2>;
-			using Double2x2 = std::array<Double2, 2>;
-			for (auto& elt : pointArray) {
-				Double2x2 point;
-				if ((elt.size() != 2) || (elt[0].size() != 2) ||
-						(elt[1].size() != 2)) {
-					ROS_WARN_STREAM("Empty distortion mono point distortion list for eye "
-							"in data from " << builtInKey);
-					return withError();
-				}
-
-				Double2 in, out;
-				in[0] = (elt[0][0].asDouble());
-				in[1] = (elt[0][1].asDouble());
-				out[0] = (elt[1][0].asDouble());
-				out[1] = (elt[1][1].asDouble());
-				point[0] = (in);
-				point[1] = (out);
-				eye.push_back(point);
-
-			}
-			mesh.push_back(eye);
-
-		}
-		ROS_INFO_STREAM("Initial processing complete. Loaded mono point samples data with "
-				<< mesh[0].size() << " and " << mesh[1].size()
-				<< " samples per eye, respectively.");
-		return mesh;
-
 	}
 
 }

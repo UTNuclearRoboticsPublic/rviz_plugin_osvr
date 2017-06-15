@@ -16,6 +16,8 @@
 #include <osvr/ClientKit/ClientKit.h>
 #include <osvr/ClientKit/Display.h>
 
+#include "rviz_plugin_osvr/Distortion.h"
+
 namespace Ogre
 {
 	class SceneManager;
@@ -81,7 +83,7 @@ namespace rviz_plugin_osvr
 			osvr::clientkit::DisplayConfig osvr_disp_conf_;
 
 		private:
-			MonoPointDistortionMeshDescriptions parseDistortionMeshes();
+			Distortion distortion_;
 	};
 
 
