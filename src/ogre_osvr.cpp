@@ -19,9 +19,6 @@
 #include <osvr/ClientKit/Display.h>
 #include <osvr/Util/Pose3C.h>
 
-#include <rviz_plugin_osvr/osvr_display_config_built_in_osvr_hdks.h>
-#include <json/reader.h>
-#include <json/value.h>
 
 #include "rviz_plugin_osvr/ogre_osvr.h"
 
@@ -89,7 +86,11 @@ namespace rviz_plugin_osvr
 			ROS_INFO_STREAM("/t"<<dist_name);
 		}
 
-		distortion_.parseFromJson(dist_names[2]);
+		distortion_.parse(dist_names[2]); //TODO: fixed choice
+		if (distortion_.computeDistortionMeshes())
+		{
+			ROS_INFO("Distortion mesh generated.");
+		}
 		
 	}
 
@@ -161,23 +162,25 @@ namespace rviz_plugin_osvr
 		}
 
 		Ogre::SceneNode* meshNode = external_scene_manager_ -> getRootSceneNode() -> createChildSceneNode();
-		MonoPointDistortionMeshDescriptions mono_meshes = parseDistortionMeshes();
+		const DistortionMeshes dist_meshes = distortion_->getMeshes();
 
-	//TODO: This will result with an error when more than two meshes are parsed!!!	
+
 		unsigned int eyeIdx = 0;
-		for(auto& mono_mesh : mono_meshes) // One mapping per eye
+		for(auto& dist_mesh : dist_meshes) // One mesh per eye
 		{
+			if (eyeIdx > 1)
+				break; //limited to two meshes currently
+			
 			Ogre::ManualObject *manObj = external_scene_manager_->createManualObject(
 					(eyeIdx==0) ? "OsvrObjectLeft" : "OsvrObjectRight");
 			manObj->begin((eyeIdx==0) ? "OsvrMaterialLeft" : "OsvrMaterialRight",
 				   	Ogre::RenderOperation::OT_LINE_STRIP);
 			manObj->colour(1,1,1);
-			//manObj->textureCoord(0.5, 0.5); 
 			
-			for(auto& elt : mono_mesh)
+			for(auto& vert : dist_mesh.vertices)
 			{
-				manObj->position(elt[0][0] - eyeIdx, elt[0][1], 0.0);
-				manObj->textureCoord(elt[1][0], elt[1][1]);
+				manObj->position(vert.pos[0] - eyeIdx, vert.pos[1], 0.0);
+				manObj->textureCoord(vert.tex[0], vert.tex[1]);
 			}
 
 			manObj->end();
@@ -185,7 +188,7 @@ namespace rviz_plugin_osvr
 			eyeIdx++;
 		}
 
-		// Move mesh vertically to the center and away from the origin.
+		// Move mesh vertically to the center and towards negative z-direction.
 		meshNode->setPosition(0,-0.5,-1);
 
 		//pass->setFragmentProgram("OsvrFragmentProgram");

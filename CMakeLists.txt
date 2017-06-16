@@ -67,12 +67,14 @@ message(STATUS "jsoncpp LIBRARIES: ${JSONCPP_INCLUDE_DIRS}")
 set(SRC_FILES
 	src/ogre_osvr.cpp
 	src/plugin_display.cpp
+	src/distortion.cpp
 	)
 
 #generate Qt MOC files
 qt5_wrap_cpp(MOC_FILES
 	include/rviz_plugin_osvr/plugin_display.h
 	include/rviz_plugin_osvr/ogre_osvr.h
+	include/rviz_plugin_osvr/distortion.h
 	)
 
 add_library(${PROJECT_NAME} ${SRC_FILES} ${MOC_FILES})

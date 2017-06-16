@@ -16,7 +16,7 @@
 #include <osvr/ClientKit/ClientKit.h>
 #include <osvr/ClientKit/Display.h>
 
-#include "rviz_plugin_osvr/Distortion.h"
+#include "rviz_plugin_osvr/distortion.h"
 
 namespace Ogre
 {
