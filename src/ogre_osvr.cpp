@@ -79,7 +79,7 @@ namespace rviz_plugin_osvr
 	void OsvrClient::onInitialize()
 	{
 		ROS_INFO("Initializing RViz Plugin for OSVR");
-		DistortionNames dist_names = distortion_.getAvailableDistortionNames();
+		DistortionNames dist_names = distortion_.getDatasetNames();
 		ROS_INFO("Available distortions:");
 		for(auto& dist_name : dist_names)
 		{
@@ -89,7 +89,7 @@ namespace rviz_plugin_osvr
 		distortion_.parse(dist_names[2]); //TODO: fixed choice
 		if (distortion_.computeDistortionMeshes())
 		{
-			ROS_INFO("Distortion mesh generated.");
+			ROS_INFO("onInitialize(): Distortion mesh generated.");
 		}
 		
 	}
@@ -162,7 +162,7 @@ namespace rviz_plugin_osvr
 		}
 
 		Ogre::SceneNode* meshNode = external_scene_manager_ -> getRootSceneNode() -> createChildSceneNode();
-		const DistortionMeshes dist_meshes = distortion_->getMeshes();
+		const DistortionMeshes dist_meshes = distortion_.getMeshes();
 
 
 		unsigned int eyeIdx = 0;

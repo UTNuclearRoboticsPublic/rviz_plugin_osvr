@@ -8,9 +8,12 @@
 #include <json/reader.h>
 #include <json/value.h>
 
+#include <OGRE/OgreVector2.h>
+#include <OGRE/Plane.h>
+
 namespace rviz_plugin_osvr {
 
-Distortion::Distortion() : desiredTriangles_(4)
+Distortion::Distortion() : desired_triangles_(8), overfill_factor_(1.0)
 {
 
 }
@@ -123,32 +126,27 @@ bool Distortion::computeDistortionMeshes() {
 	auto const num_verts_per_side = quads_per_side + 1;
 	auto const num_vertices = num_verts_per_side*num_verts_per_side;
 
-	DistortionMesh mesh;
-	mesh.vertices.reserve(num_vertices);
 
 	// go through the distortion maps and create mesh for each map using interpolation
 	for (auto& dist_map : maps_)
 	{
+		DistortionMesh mesh;
+		mesh.vertices.reserve(num_vertices);
 		// Generate a grid of vertices with distorted texture coordinates
 		for (int x = 0; x < num_verts_per_side; x++) 
 		{
 			float x_pos = -1 + x * quad_side;
-			float x_tex = x * quad_tex_side;
+//			float x_tex = x * quad_tex_side;
 
 			for (int y = 0; y < num_verts_per_side; y++) 
 			{
 				float y_pos = -1 + y * quad_side;
-				float y_tex = y * quad_tex_side;
+//				float y_tex = y * quad_tex_side;
 
-				//Float2 pos = { x_pos, y_pos };
-				//Float2 tex = { x_tex, y_tex };
-
-				/*
-				   ret.vertices.emplace_back(pos,
-				   DistortionCorrectTextureCoordinate(eye, tex, distort, 0, overfillFactor, interpolators),
-				   DistortionCorrectTextureCoordinate(eye, tex, distort, 1, overfillFactor, interpolators),
-				   DistortionCorrectTextureCoordinate(eye, tex, distort, 2, overfillFactor, interpolators));
-				   */
+//				DistortionVertex v;
+				Point2D pos{x_pos, y_pos};
+//				v.tex = {x_tex, y_tex};
+				mesh.vertices.emplace_back(computeInterpolatedDistortionVertex(dist_map, pos, overfill_factor_));
 			}
 		}
 
@@ -177,11 +175,97 @@ bool Distortion::computeDistortionMeshes() {
 				mesh.indices.emplace_back(index_lh);
 			}
 		}
+
 	} // loop over maps for each eye 
 
 	return true;
-
 } // end computeMeshes
+
+
+DistortionVertex Distortion::computeInterpolatedDistortionVertex(const DistortionPointMap& dist_map, const Point2D& pos, double overfill_factor)
+{
+
+	Point2D modified_position{{
+			(pos[0] - 0.5) * overfill_factor + 0.5,   // x
+			(pos[0] - 0.5) * overfill_factor + 0.5}}; // y
+
+	//get nearest points
+DistortionPointMap nearest_points = getNearestPoints(dist_map, modified_position)
+
+	DistortionVertex v; 
+	v.pos = {0,0};
+	v.tex = {0,0};
+	return v; 
+}
+
+DistortionPointMap Distortion::getNearestPoints(const DistortionPointMap& distortion_map, const Point2D& pos)
+{
+
+	DistortionPointMap ret; //fill this vector with maximum of 3 nearest points
+	typedef std::multimap<double, size_t> PointDistanceIndexMap;
+	PointDistanceIndexMap distance_map;
+	for (const auto& v : distortion_map)
+	{
+		distance_map.insert(std::make_pair(getDistanceBetweenPoints(v.pos,pos), v-v.begin()));
+	}
+
+	PointDistanceIndexMap::const_iterator it = distance_map.begin();
+	size_t first = it->second;
+	it++;
+	size_t second = it->second;
+	it++;
+	size_t third = first;
+	while (it != distance_map.end())
+	{
+		if(!nearlyCollinear(
+					distortion_map[first].pos,
+					distortion_map[second].pos,
+					distortion_map[it->second].pos))
+		{
+			third = it->second;
+			break;
+		}
+		it++;
+	}
+
+	ret.push_back(distortion_map[first]);
+	ret.push_back(distortion_map[second]);
+	if(first!=third)
+	{
+		ret.push_back(distortion_map[third]);
+	}
+
+}
+
+
+double Distortion::getDistanceBetweenPoints(const Point2D& p1, const Point2D& p2)
+{
+	return std::sqrt((p1[0]-p2[0]) * (p1[0]-p2[0]) + (p1[1]-p2[1]) * (p1[1]-p2[1]));
+}
+
+bool nearlyCollinear(const Point2D& p1, const Point2D& p2,const Point2D& p3)
+{
+	Ogre::Vector2 v1(p2[0]-p1[0], p2[1]-p1[1]);
+	Ogre::Vector2 v2(p3[0]-p1[0], p3[1]-p1[1]);
+	if(v1.length()*v2.length()==0) // If either vector is zero length, they are collinear
+	{
+		return true;
+	}
+
+	v1.normalise();
+	v2.normalise();
+
+	return (fabs(v1.crossProduct(v2)) > 0.8)
+}
+
+DistortionVertex Distortion::interpolate(const DistortionVertex& dv1, const DistortionVertex& dv2,const DistortionVertex& dv3, const Point2D& pos)
+{
+
+	//Create a plane using the given three points
+	Ogre::Plane(Ogre::Vector3 )
+
+}
+
 
 } // end namespace rviz_plugion_osvr
 

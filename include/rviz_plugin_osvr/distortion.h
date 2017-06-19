@@ -4,6 +4,7 @@
 #include <string>      
 #include <vector>      
 #include <array>      
+#include <cmath>      
 
 
 #include <rviz_plugin_osvr/osvr_display_config_built_in_osvr_hdks.h>
@@ -21,10 +22,12 @@ namespace rviz_plugin_osvr {
 			{"OSVR_HDK_13_V2", osvr_display_config_built_in_osvr_hdk13_v2},
 			{"OSVR_HDK_20_V1", osvr_display_config_built_in_osvr_hdk20_v1}};
 
+	using Point2D = std::array<double, 2>;	
+
 	struct DistortionVertex
 	{
-		std::array<double, 2> pos; // XY coordinates
-		std::array<double, 2> tex; // UV coordinates; Currently, RGB distortion currently not supported
+		Point2D pos; // XY coordinates
+		Point2D tex; // UV coordinates; Currently, RGB distortion currently not supported
 	};
 
 	struct DistortionMesh
@@ -47,10 +50,20 @@ namespace rviz_plugin_osvr {
 			Distortion();
 			bool parse(const std::string& dataset_name);
 			bool computeDistortionMeshes();
-
 			inline const DistortionNames getDatasetNames(){return names_;};
 			inline const DistortionMeshes getMeshes(){return meshes_;};
+			
+			static DistortionVertex computeInterpolatedDistortionVertex(
+					const DistortionPointMap& distortion_map, 
+					const Point2D& pos,
+					double overfill_factor);
+			
+			static DistortionPointMap getNearestPoints(
+					const DistortionPointMap& distortion_map, 
+					const Point2D& pos);
 
+			static double getDistanceBetweenPoints(const Point2D& p1, const Point2D& p2);
+			bool nearlyCollinear(const Point2D& p1, const Point2D& p2,const Point2D& p3);
 
 		private:
 			DistortionPointMaps maps_;
@@ -58,6 +71,7 @@ namespace rviz_plugin_osvr {
 			DistortionNames names_; // Names of available datasets
 
 			unsigned int desired_triangles_;	
+			double overfill_factor_;
 	};
 
 } // namespace rviz_plugin_osvr
