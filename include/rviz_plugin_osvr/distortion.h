@@ -53,14 +53,20 @@ namespace rviz_plugin_osvr {
 			inline const DistortionNames getDatasetNames(){return names_;};
 			inline const DistortionMeshes getMeshes(){return meshes_;};
 			
-			static DistortionVertex computeInterpolatedDistortionVertex(
+			static bool computeInterpolatedDistortionVertex(
+					DistortionVertex& dist_vert,
 					const DistortionPointMap& distortion_map, 
-					const Point2D& pos,
 					double overfill_factor);
 			
 			static DistortionPointMap getNearestPoints(
 					const DistortionPointMap& distortion_map, 
 					const Point2D& pos);
+			
+			static bool interpolate(
+					DistortionVertex& dv_interp,
+					const DistortionVertex& dv1,
+					const DistortionVertex& dv2,
+					const DistortionVertex& dv3);
 
 			static double getDistanceBetweenPoints(const Point2D& p1, const Point2D& p2);
 			bool nearlyCollinear(const Point2D& p1, const Point2D& p2,const Point2D& p3);

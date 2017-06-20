@@ -9,7 +9,8 @@
 #include <json/value.h>
 
 #include <OGRE/OgreVector2.h>
-#include <OGRE/Plane.h>
+#include <OGRE/OgreVector3.h>
+#include <OGRE/OgrePlane.h>
 
 namespace rviz_plugin_osvr {
 
@@ -116,8 +117,8 @@ bool Distortion::computeDistortionMeshes() {
 	// Figure out how large each quad will be.  Recall that we're
 	// covering a range of 2 (from -1 to 1) in each dimension, so the
 	// quads will all be square in texture space.
-	float quad_side = 2.0f / quads_per_side;
-	float quad_tex_side = 1.0f / quads_per_side;
+	float quad_side = 1.0f / quads_per_side;
+//	float quad_tex_side = 1.0f / quads_per_side;
 
 	// Compute distorted texture coordinates and use those for each
 	// vertex, with appropriate spatial location and texture
@@ -143,10 +144,19 @@ bool Distortion::computeDistortionMeshes() {
 				float y_pos = -1 + y * quad_side;
 //				float y_tex = y * quad_tex_side;
 
-//				DistortionVertex v;
-				Point2D pos{x_pos, y_pos};
-//				v.tex = {x_tex, y_tex};
-				mesh.vertices.emplace_back(computeInterpolatedDistortionVertex(dist_map, pos, overfill_factor_));
+				DistortionVertex dv;
+				dv.pos = {{x_pos, y_pos}};
+				dv.tex = {{0, 0}}; // to be interpolated
+				if(computeInterpolatedDistortionVertex(dv, dist_map, overfill_factor_))
+				{
+					mesh.vertices.emplace_back();
+				}
+				else
+				{
+					// interpolation error, mesh is not consistent any more,
+					// stop and get out of here
+					return false;
+				}
 			}
 		}
 
@@ -182,20 +192,25 @@ bool Distortion::computeDistortionMeshes() {
 } // end computeMeshes
 
 
-DistortionVertex Distortion::computeInterpolatedDistortionVertex(const DistortionPointMap& dist_map, const Point2D& pos, double overfill_factor)
+bool Distortion::computeInterpolatedDistortionVertex(DistortionVertex& dv, const DistortionPointMap& dist_map, double overfill_factor)
 {
+	// scale input point from overfill space to normalized space 
+		dv.pos[0] = (dv.pos[0] - 0.5) * overfill_factor + 0.5; // x
+		dv.pos[1] = (dv.pos[1] - 0.5) * overfill_factor + 0.5; // y
 
-	Point2D modified_position{{
-			(pos[0] - 0.5) * overfill_factor + 0.5,   // x
-			(pos[0] - 0.5) * overfill_factor + 0.5}}; // y
+	// get nearest points
+	DistortionPointMap nearest_points = getNearestPoints(dist_map, dv.pos);
+	if(nearest_points.size() != 3)
+		return false;
 
-	//get nearest points
-DistortionPointMap nearest_points = getNearestPoints(dist_map, modified_position)
+	if(!interpolate(dv, nearest_points[0], nearest_points[1],nearest_points[2]))
+		return false;
 
-	DistortionVertex v; 
-	v.pos = {0,0};
-	v.tex = {0,0};
-	return v; 
+	// scale back from normalized space to overfill space
+	dv.pos[0] = (dv.pos[0] - 0.5) / overfill_factor + 0.5;   // x
+	dv.pos[1] = (dv.pos[1] - 0.5) / overfill_factor + 0.5;   // x
+
+	return true;
 }
 
 DistortionPointMap Distortion::getNearestPoints(const DistortionPointMap& distortion_map, const Point2D& pos)
@@ -204,9 +219,9 @@ DistortionPointMap Distortion::getNearestPoints(const DistortionPointMap& distor
 	DistortionPointMap ret; //fill this vector with maximum of 3 nearest points
 	typedef std::multimap<double, size_t> PointDistanceIndexMap;
 	PointDistanceIndexMap distance_map;
-	for (const auto& v : distortion_map)
+	for (auto it=distortion_map.begin(); it!=distortion_map.end();it++)
 	{
-		distance_map.insert(std::make_pair(getDistanceBetweenPoints(v.pos,pos), v-v.begin()));
+		distance_map.insert(std::make_pair(getDistanceBetweenPoints(it->pos,pos), it-distortion_map.begin()));
 	}
 
 	PointDistanceIndexMap::const_iterator it = distance_map.begin();
@@ -220,7 +235,7 @@ DistortionPointMap Distortion::getNearestPoints(const DistortionPointMap& distor
 		if(!nearlyCollinear(
 					distortion_map[first].pos,
 					distortion_map[second].pos,
-					distortion_map[it->second].pos))
+					(distortion_map[it->second]).pos))
 		{
 			third = it->second;
 			break;
@@ -234,6 +249,7 @@ DistortionPointMap Distortion::getNearestPoints(const DistortionPointMap& distor
 	{
 		ret.push_back(distortion_map[third]);
 	}
+	return ret;
 
 }
 
@@ -255,15 +271,43 @@ bool nearlyCollinear(const Point2D& p1, const Point2D& p2,const Point2D& p3)
 	v1.normalise();
 	v2.normalise();
 
-	return (fabs(v1.crossProduct(v2)) > 0.8)
+	return (fabs(v1.crossProduct(v2)) > 0.8);
 }
 
-DistortionVertex Distortion::interpolate(const DistortionVertex& dv1, const DistortionVertex& dv2,const DistortionVertex& dv3, const Point2D& pos)
+bool Distortion::interpolate(DistortionVertex& dv_interp, const DistortionVertex& dv1, 
+		const DistortionVertex& dv2,const DistortionVertex& dv3)
 {
+//prepare 3D points, with X, Y and U coordinates.
+	Ogre::Vector3 p1u(dv1.pos[0], dv1.pos[1], dv1.tex[0]);
+	Ogre::Vector3 p2u(dv2.pos[0], dv2.pos[1], dv2.tex[0]);
+	Ogre::Vector3 p3u(dv3.pos[0], dv3.pos[1], dv3.tex[0]);
 
-	//Create a plane using the given three points
-	Ogre::Plane(Ogre::Vector3 )
+//prepare 3D points, with X, Y and V coordinates.
+	Ogre::Vector3 p1v(dv1.pos[0], dv1.pos[1], dv1.tex[1]);
+	Ogre::Vector3 p2v(dv2.pos[0], dv2.pos[1], dv2.tex[1]);
+	Ogre::Vector3 p3v(dv3.pos[0], dv3.pos[1], dv3.tex[1]);
+	
+	//Create two planes for each pointset
+	Ogre::Plane pu(p1u, p2u, p3u);
+	Ogre::Plane pv(p1v, p2v, p3v);
 
+	double u_norm_length = pu.normalise();
+	double v_norm_length = pv.normalise();
+
+	if(u_norm_length*v_norm_length == 0)
+	{
+		return false;
+	}
+
+	// Find u and v coordinates for fixed x and y on previously defined planes.
+	//Z = -(AX + BY + D)/C;
+	dv_interp.tex[0] = -(pu.normal.x*dv_interp.pos[0] + 
+						 pu.normal.y*dv_interp.pos[1] + pu.d) / pu.normal.z; //u
+
+	dv_interp.tex[1] = -(pv.normal.x*dv_interp.pos[0] + 
+						 pv.normal.y*dv_interp.pos[1] + pv.d) / pv.normal.z; //v
+
+	return  true;
 }
 
 

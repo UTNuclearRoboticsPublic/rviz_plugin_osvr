@@ -91,6 +91,10 @@ namespace rviz_plugin_osvr
 		{
 			ROS_INFO("onInitialize(): Distortion mesh generated.");
 		}
+		else
+		{
+			ROS_INFO("onInitialize(): Failed to generate distortion mesh.");
+		}
 		
 	}
 
@@ -189,7 +193,7 @@ namespace rviz_plugin_osvr
 		}
 
 		// Move mesh vertically to the center and towards negative z-direction.
-		meshNode->setPosition(0,-0.5,-1);
+		meshNode->setPosition(0,-5,-1);
 
 		//pass->setFragmentProgram("OsvrFragmentProgram");
 		//pass->setVertexProgram("OsvrVertexProgram");
