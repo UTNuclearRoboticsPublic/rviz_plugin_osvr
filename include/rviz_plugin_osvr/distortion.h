@@ -69,7 +69,7 @@ namespace rviz_plugin_osvr {
 					const DistortionVertex& dv3);
 
 			static double getDistanceBetweenPoints(const Point2D& p1, const Point2D& p2);
-			bool nearlyCollinear(const Point2D& p1, const Point2D& p2,const Point2D& p3);
+			static bool nearlyCollinear(const Point2D& p1, const Point2D& p2,const Point2D& p3);
 
 		private:
 			DistortionPointMaps maps_;

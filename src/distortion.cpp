@@ -16,7 +16,12 @@ namespace rviz_plugin_osvr {
 
 Distortion::Distortion() : desired_triangles_(8), overfill_factor_(1.0)
 {
-
+	//initialize dataset names
+	names_.clear();
+	for (auto& dataset: OSVR_DISTORTION_DATASETS )
+	{
+		names_.emplace_back(dataset.key);
+	}
 }
 
 
@@ -149,7 +154,7 @@ bool Distortion::computeDistortionMeshes() {
 				dv.tex = {{0, 0}}; // to be interpolated
 				if(computeInterpolatedDistortionVertex(dv, dist_map, overfill_factor_))
 				{
-					mesh.vertices.emplace_back();
+					mesh.vertices.push_back(dv);
 				}
 				else
 				{
@@ -186,6 +191,8 @@ bool Distortion::computeDistortionMeshes() {
 			}
 		}
 
+		meshes_.push_back(mesh);
+
 	} // loop over maps for each eye 
 
 	return true;
@@ -219,9 +226,9 @@ DistortionPointMap Distortion::getNearestPoints(const DistortionPointMap& distor
 	DistortionPointMap ret; //fill this vector with maximum of 3 nearest points
 	typedef std::multimap<double, size_t> PointDistanceIndexMap;
 	PointDistanceIndexMap distance_map;
-	for (auto it=distortion_map.begin(); it!=distortion_map.end();it++)
+	for (size_t i=0; i<distortion_map.size(); i++)
 	{
-		distance_map.insert(std::make_pair(getDistanceBetweenPoints(it->pos,pos), it-distortion_map.begin()));
+		distance_map.insert(std::make_pair(getDistanceBetweenPoints(pos, distortion_map[i].pos), i));
 	}
 
 	PointDistanceIndexMap::const_iterator it = distance_map.begin();
@@ -235,7 +242,7 @@ DistortionPointMap Distortion::getNearestPoints(const DistortionPointMap& distor
 		if(!nearlyCollinear(
 					distortion_map[first].pos,
 					distortion_map[second].pos,
-					(distortion_map[it->second]).pos))
+					distortion_map[it->second].pos))
 		{
 			third = it->second;
 			break;
@@ -259,7 +266,7 @@ double Distortion::getDistanceBetweenPoints(const Point2D& p1, const Point2D& p2
 	return std::sqrt((p1[0]-p2[0]) * (p1[0]-p2[0]) + (p1[1]-p2[1]) * (p1[1]-p2[1]));
 }
 
-bool nearlyCollinear(const Point2D& p1, const Point2D& p2,const Point2D& p3)
+bool Distortion::nearlyCollinear(const Point2D& p1, const Point2D& p2,const Point2D& p3)
 {
 	Ogre::Vector2 v1(p2[0]-p1[0], p2[1]-p1[1]);
 	Ogre::Vector2 v2(p3[0]-p1[0], p3[1]-p1[1]);
@@ -287,6 +294,7 @@ bool Distortion::interpolate(DistortionVertex& dv_interp, const DistortionVertex
 	Ogre::Vector3 p2v(dv2.pos[0], dv2.pos[1], dv2.tex[1]);
 	Ogre::Vector3 p3v(dv3.pos[0], dv3.pos[1], dv3.tex[1]);
 	
+	ROS_INFO_STREAM(p1v << " "<< p2v << " " << p3v);
 	//Create two planes for each pointset
 	Ogre::Plane pu(p1u, p2u, p3u);
 	Ogre::Plane pv(p1v, p2v, p3v);
@@ -299,6 +307,9 @@ bool Distortion::interpolate(DistortionVertex& dv_interp, const DistortionVertex
 		return false;
 	}
 
+	ROS_INFO("INTERP: %.2f, %.2f", dv_interp.pos[0], dv_interp.pos[1]);
+	ROS_INFO_STREAM(pu.normal << " "<< pv.normal);
+
 	// Find u and v coordinates for fixed x and y on previously defined planes.
 	//Z = -(AX + BY + D)/C;
 	dv_interp.tex[0] = -(pu.normal.x*dv_interp.pos[0] + 
@@ -307,6 +318,7 @@ bool Distortion::interpolate(DistortionVertex& dv_interp, const DistortionVertex
 	dv_interp.tex[1] = -(pv.normal.x*dv_interp.pos[0] + 
 						 pv.normal.y*dv_interp.pos[1] + pv.d) / pv.normal.z; //v
 
+	ROS_INFO("TEX: %.2f, %.2f", dv_interp.tex[0], dv_interp.tex[1]);
 	return  true;
 }
 

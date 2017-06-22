@@ -76,9 +76,9 @@ namespace rviz_plugin_osvr
 		}
 	}
 	
-	void OsvrClient::onInitialize()
+	void OsvrClient::setupDistortion()
 	{
-		ROS_INFO("Initializing RViz Plugin for OSVR");
+		ROS_INFO("Setting up osvr distortion");
 		DistortionNames dist_names = distortion_.getDatasetNames();
 		ROS_INFO("Available distortions:");
 		for(auto& dist_name : dist_names)
@@ -183,6 +183,7 @@ namespace rviz_plugin_osvr
 			
 			for(auto& vert : dist_mesh.vertices)
 			{
+				ROS_INFO("AddingVertex %.2f, %.2f --> %.2f, %.2f", vert.pos[0], vert.pos[1], vert.tex[0], vert.tex[1]);
 				manObj->position(vert.pos[0] - eyeIdx, vert.pos[1], 0.0);
 				manObj->textureCoord(vert.tex[0], vert.tex[1]);
 			}
@@ -193,7 +194,7 @@ namespace rviz_plugin_osvr
 		}
 
 		// Move mesh vertically to the center and towards negative z-direction.
-		meshNode->setPosition(0,-5,-1);
+		meshNode->setPosition(0,-0.5,-1);
 
 		//pass->setFragmentProgram("OsvrFragmentProgram");
 		//pass->setVertexProgram("OsvrVertexProgram");

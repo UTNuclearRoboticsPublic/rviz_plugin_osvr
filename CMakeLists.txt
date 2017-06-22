@@ -65,9 +65,9 @@ message(STATUS "jsoncpp LIBRARIES: ${JSONCPP_INCLUDE_DIRS}")
 
 
 set(SRC_FILES
+	src/distortion.cpp
 	src/ogre_osvr.cpp
 	src/plugin_display.cpp
-	src/distortion.cpp
 	)
 
 #generate Qt MOC files

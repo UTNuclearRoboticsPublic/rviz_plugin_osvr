@@ -70,7 +70,7 @@ PluginDisplay::~PluginDisplay()
 
 void PluginDisplay::onInitialize()
 {
-	ROS_INFO("onInitialize");
+	ROS_INFO("PluginDisplay::onInitialize");
 
 	fullscreen_property_ = new rviz::BoolProperty( "Render to Oculus", false,
 		"If checked, will render fullscreen on your secondary screen. Otherwise, shows a window.",
@@ -157,6 +157,7 @@ void PluginDisplay::onEnable()
 	if(!osvr_client_)
 	{
 		osvr_client_ = new OsvrClient();
+		osvr_client_->setupDistortion();
 		osvr_client_->setupOgre(scene_manager_, window, scene_node_);
 	}
 	
