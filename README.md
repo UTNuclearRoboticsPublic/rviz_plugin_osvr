@@ -34,6 +34,7 @@ make install
 Now that we have libfunctionality installed, clone yourself the source of OSVR-Core.
 
 ```
+cd ~/build
 git clone --recursive https://github.com/OSVR/OSVR-Core.git
 ```
 
@@ -45,7 +46,7 @@ So, locate the **~/build/OSVR-Core/CMakeLists.txt** and make the following chang
 ```
 ...
 
--   find_package(OPEN_CV)
+-   find_package(OpenCV)
 +   find_package(OpenCV COMPONENTS core videoio imgproc features2d calib3d highgui flann ml imgcodecs)
 
 ...
