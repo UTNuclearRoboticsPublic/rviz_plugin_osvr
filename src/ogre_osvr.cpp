@@ -24,8 +24,13 @@
 
 namespace rviz_plugin_osvr
 {
-	OsvrClient::OsvrClient() : window_(0), scene_manager_(0), camera_node_(0),
-			osvr_ctx_("com.rviz.plugOSVR"), osvr_disp_conf_(osvr_ctx_)
+	OsvrClient::OsvrClient() :
+		window_(0), 
+		scene_manager_(0), 
+		camera_node_(0),
+		head_offset_(Ogre::Vector3(0,-1.2,-0.3)),
+		osvr_ctx_("com.rviz.plugOSVR"), 
+		osvr_disp_conf_(osvr_ctx_)
 	{
 		for(int i=0;i<2;i++)
 		{
@@ -114,7 +119,7 @@ namespace rviz_plugin_osvr
 		
 		// Create external scenemanager and viewport for distortion mesh.  
 		external_scene_manager_ = rviz::RenderSystem::get()->root()->createSceneManager(Ogre::ST_GENERIC);
-		external_scene_manager_ ->setAmbientLight(Ogre::ColourValue(0.5, 0.5, 0.5));
+		external_scene_manager_ ->setAmbientLight(Ogre::ColourValue(1, 1, 1));
 		
 		external_camera_ = external_scene_manager_ -> createCamera("OsvrCameraExternal");
 		external_camera_ -> setFarClipDistance(50);
@@ -178,23 +183,53 @@ namespace rviz_plugin_osvr
 			Ogre::ManualObject *manObj = external_scene_manager_->createManualObject(
 					(eyeIdx==0) ? "OsvrObjectLeft" : "OsvrObjectRight");
 			manObj->begin((eyeIdx==0) ? "OsvrMaterialLeft" : "OsvrMaterialRight",
-				   	Ogre::RenderOperation::OT_LINE_STRIP);
-			manObj->colour(1,1,1);
-			
+				   	Ogre::RenderOperation::OT_TRIANGLE_LIST);
+
+			//set vertices
 			for(auto& vert : dist_mesh.vertices)
 			{
-				ROS_INFO("AddingVertex %.2f, %.2f --> %.2f, %.2f", vert.pos[0], vert.pos[1], vert.tex[0], vert.tex[1]);
-				manObj->position(vert.pos[0] - eyeIdx, vert.pos[1], 0.0);
+				//ROS_INFO("AddingVertex %.2f, %.2f --> %.2f, %.2f", vert.pos[0]+eyeIdx, vert.pos[1], vert.tex[0], vert.tex[1]);
+				//manObj->position(vert.pos[0] - eyeIdx, vert.pos[1], 0.0);
+				manObj->position(vert.pos[0]+eyeIdx, vert.pos[1], 0.0);
 				manObj->textureCoord(vert.tex[0], vert.tex[1]);
 			}
+
+			// set indices
+			for(auto& idx : dist_mesh.indices)
+			{
+				manObj->index(idx);
+			}
+
 
 			manObj->end();
 			meshNode->attachObject(manObj);
 			eyeIdx++;
 		}
 
-		// Move mesh vertically to the center and towards negative z-direction.
-		meshNode->setPosition(0,-0.5,-1);
+		// Move mesh vertically to viewport center and push towards negative z-direction.
+		meshNode->setPosition(-1,-0.5,-1);
+
+
+DistortionPointMaps maps = distortion_.getDistortionPointMaps();
+Ogre::SceneNode* dbgNode = sm->getRootSceneNode()->createChildSceneNode("DebugNode");
+ for(const auto& map : maps)
+ {
+	 Ogre::ManualObject *dbgObj = external_scene_manager_->createManualObject("OsvrObjectDebug");
+	 dbgObj->begin("OsvrMaterialLeft", Ogre::RenderOperation::OT_POINT_LIST);
+	 for(const auto& dv : map)
+	 {
+		 dbgObj->position(dv.pos[0], dv.pos[1],Distortion::getDistanceBetweenPoints(dv.pos,dv.tex));
+		 dbgObj->colour(0.0,0.0,1.0);
+		 //dbgObj->position(dv.pos[0], dv.pos[1],0);
+		 //dbgObj->colour(0.0,1.0,0.0);
+
+	 }
+	 dbgObj->end();
+	 dbgNode->attachObject(dbgObj);
+	 break;
+ }
+
+
 
 		//pass->setFragmentProgram("OsvrFragmentProgram");
 		//pass->setVertexProgram("OsvrVertexProgram");
@@ -268,65 +303,77 @@ namespace rviz_plugin_osvr
 		if (!osvr_disp_conf_.valid()) return;
 
 
-
-		int eye_idx=0;
-		osvr_disp_conf_.forEachEye([&](osvr::clientkit::Eye eye)
-		{
-			if (eye_idx < 2)  
-			{
-				eye.forEachSurface([&](osvr::clientkit::Surface surface)
+		osvr_disp_conf_.forEachViewer([&](osvr::clientkit::Viewer viewer)
 				{
-					try
-					{
-					ROS_INFO("COP: %f", 
-							surface.getRadialDistortion().centerOfProjection.data[0]);
-					}
-					catch(std::runtime_error e ){}
-				});
+//viewer.
+//				});
+
+//		int eye_idx=0;
+//		osvr_disp_conf_.forEachEye([&](osvr::clientkit::Eye eye)
+//		{
+//			if (eye_idx < 2)  
+//			{
+//				eye.forEachSurface([&](osvr::clientkit::Surface surface)
+//				{
+//					try
+//					{
+//					ROS_INFO("COP: %f", 
+//							surface.getRadialDistortion().centerOfProjection.data[0]);
+//					}
+//					catch(std::runtime_error e ){}
+//				});
 
 
-				double osvr_view_mat[OSVR_MATRIX_SIZE];
-				if(eye.getViewMatrix(OSVR_MATRIX_COLMAJOR|OSVR_MATRIX_COLVECTORS,osvr_view_mat))
-				{
-					Ogre::Matrix4 ogre_view_mat;
+//				double osvr_view_mat[OSVR_MATRIX_SIZE];
+// 				if(eye.getViewMatrix(OSVR_MATRIX_COLMAJOR|OSVR_MATRIX_COLVECTORS,osvr_view_mat))
+// 				{
+// 					Ogre::Matrix4 ogre_view_mat;
+// 
+// 					for(int i=0;i<4;i++)
+// 					for (int j=0;j<4;j++)
+// 					ogre_view_mat[j][i] = osvr_view_mat[i*4+j];
+// 				//	cameras_[eye_idx]->setCustomViewMatrix(true,ogre_view_mat.inverse());
+// 
+// 				//	Ogre::Matrix4 ident = Ogre::Matrix4::IDENTITY;
+// 				//	ident.setTrans(Ogre::Vector3(0,0,-2));
+ 
 
-					for(int i=0;i<4;i++)
-					for (int j=0;j<4;j++)
-					ogre_view_mat[j][i] = osvr_view_mat[i*4+j];
-				//	cameras_[eye_idx]->setCustomViewMatrix(true,ogre_view_mat.inverse());
-
-				//	Ogre::Matrix4 ident = Ogre::Matrix4::IDENTITY;
-				//	ident.setTrans(Ogre::Vector3(0,0,-2));
 
 					OSVR_Pose3 pose;
-					eye.getPose(pose);
+//					eye.getPose(pose);
+					if(!viewer.getPose(pose))
+						return;
+
 					Ogre::Quaternion ori;
 					ori.w = (Ogre::Real)osvrQuatGetW(&pose.rotation);
-					ori.x = -(Ogre::Real)osvrQuatGetX(&pose.rotation);
+					ori.x = (Ogre::Real)osvrQuatGetX(&pose.rotation);
 					ori.y = -(Ogre::Real)osvrQuatGetY(&pose.rotation);
-					ori.z = (Ogre::Real)osvrQuatGetZ(&pose.rotation);
+					ori.z = -(Ogre::Real)osvrQuatGetZ(&pose.rotation);
 					ori.normalise();
 
 //					ROS_INFO("rot: %f %f %f %f",ori.x, ori.y, ori.z, ori.w);
 					
 					Ogre::Vector3 pos(
-							(Ogre::Real)pose.translation.data[0],
+							(Ogre::Real)-pose.translation.data[0],
 							(Ogre::Real)pose.translation.data[1],
 							(Ogre::Real)pose.translation.data[2]);
 
+					camera_node_->setPosition((pos+head_offset_)*2);
+					camera_node_->setOrientation(ori);
 
 					//Ogre::Quaternion oneEightyTurnY(Ogre::Degree(180),Ogre::Vector3::UNIT_Y);
 					//Ogre::Quaternion oneEightyTurnZ(Ogre::Degree(180),Ogre::Vector3::UNIT_Z);
 
-					cameras_[eye_idx]->setOrientation(ori);
+//					cameras_[eye_idx]->setOrientation(ori);
 					//cameras_[eye_idx]->setOrientation(oneEightyTurnZ*oneEightyTurnY*ori);
 //					Ogre::Quaternion curOri = cameras_[eye_idx]->getOrientation();
 //					cameras_[eye_idx]->setOrientation(newOri*curOri);
-//					cameras_[eye_idx]->setPosition(pos);
+//					cameras_[eye_idx]->setPosition(pos-head_offset_);
+//					ROS_INFO_STREAM("CAM:"<<cameras_[eye_idx]->getPosition());
 //					ROS_INFO_STREAM("POS: "<<pos);
-				}
-			}
-			eye_idx++;
+//				}
+		//	}
+		//	eye_idx++;
 		});
 	}
 

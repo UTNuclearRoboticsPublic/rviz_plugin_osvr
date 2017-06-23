@@ -52,6 +52,7 @@ namespace rviz_plugin_osvr {
 			bool computeDistortionMeshes();
 			inline const DistortionNames getDatasetNames(){return names_;};
 			inline const DistortionMeshes getMeshes(){return meshes_;};
+			inline const DistortionPointMaps getDistortionPointMaps(){return maps_;};
 			
 			static bool computeInterpolatedDistortionVertex(
 					DistortionVertex& dist_vert,

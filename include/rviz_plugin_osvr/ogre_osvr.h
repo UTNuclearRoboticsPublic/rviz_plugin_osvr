@@ -84,6 +84,7 @@ namespace rviz_plugin_osvr
 
 		private:
 			Distortion distortion_;
+			Ogre::Vector3 head_offset_;
 	};
 
 

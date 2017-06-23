@@ -14,7 +14,7 @@
 
 namespace rviz_plugin_osvr {
 
-Distortion::Distortion() : desired_triangles_(8), overfill_factor_(1.0)
+Distortion::Distortion() : desired_triangles_(400), overfill_factor_(1)
 {
 	//initialize dataset names
 	names_.clear();
@@ -122,7 +122,7 @@ bool Distortion::computeDistortionMeshes() {
 	// Figure out how large each quad will be.  Recall that we're
 	// covering a range of 2 (from -1 to 1) in each dimension, so the
 	// quads will all be square in texture space.
-	float quad_side = 1.0f / quads_per_side;
+	double const quad_side = 1.0f / quads_per_side;
 //	float quad_tex_side = 1.0f / quads_per_side;
 
 	// Compute distorted texture coordinates and use those for each
@@ -141,12 +141,14 @@ bool Distortion::computeDistortionMeshes() {
 		// Generate a grid of vertices with distorted texture coordinates
 		for (int x = 0; x < num_verts_per_side; x++) 
 		{
-			float x_pos = -1 + x * quad_side;
+			float x_pos = 0 + x * quad_side;
+			//float x_pos = -1 + x * quad_side;
 //			float x_tex = x * quad_tex_side;
 
 			for (int y = 0; y < num_verts_per_side; y++) 
 			{
-				float y_pos = -1 + y * quad_side;
+				float y_pos = 0 + y * quad_side;
+				//float y_pos = -1 + y * quad_side;
 //				float y_tex = y * quad_tex_side;
 
 				DistortionVertex dv;
@@ -210,12 +212,14 @@ bool Distortion::computeInterpolatedDistortionVertex(DistortionVertex& dv, const
 	if(nearest_points.size() != 3)
 		return false;
 
+//	dv.tex[0] = (nearest_points[0].tex[0]+nearest_points[1].tex[0]+nearest_points[1].tex[0])/3;
+//	dv.tex[1] = (nearest_points[0].tex[1]+nearest_points[1].tex[1]+nearest_points[1].tex[1])/3;
 	if(!interpolate(dv, nearest_points[0], nearest_points[1],nearest_points[2]))
 		return false;
 
-	// scale back from normalized space to overfill space
+	//scale back from normalized space to overfill space
 	dv.pos[0] = (dv.pos[0] - 0.5) / overfill_factor + 0.5;   // x
-	dv.pos[1] = (dv.pos[1] - 0.5) / overfill_factor + 0.5;   // x
+	dv.pos[1] = (dv.pos[1] - 0.5) / overfill_factor + 0.5;   // y
 
 	return true;
 }
@@ -247,6 +251,11 @@ DistortionPointMap Distortion::getNearestPoints(const DistortionPointMap& distor
 			third = it->second;
 			break;
 		}
+//		ROS_WARN("nearlyCollinear set detected");
+//		ROS_INFO("p1: %.2f, %.2f", distortion_map[first].pos[0], distortion_map[first].pos[1]);
+//		ROS_INFO("p2: %.2f, %.2f", distortion_map[second].pos[0], distortion_map[second].pos[1]);
+//		ROS_INFO("p3: %.2f, %.2f", distortion_map[it->second].pos[0], distortion_map[it->second].pos[1]);
+
 		it++;
 	}
 
@@ -278,7 +287,7 @@ bool Distortion::nearlyCollinear(const Point2D& p1, const Point2D& p2,const Poin
 	v1.normalise();
 	v2.normalise();
 
-	return (fabs(v1.crossProduct(v2)) > 0.8);
+	return fabs(v1.dotProduct(v2)) > 0.9;
 }
 
 bool Distortion::interpolate(DistortionVertex& dv_interp, const DistortionVertex& dv1, 
@@ -294,7 +303,6 @@ bool Distortion::interpolate(DistortionVertex& dv_interp, const DistortionVertex
 	Ogre::Vector3 p2v(dv2.pos[0], dv2.pos[1], dv2.tex[1]);
 	Ogre::Vector3 p3v(dv3.pos[0], dv3.pos[1], dv3.tex[1]);
 	
-	ROS_INFO_STREAM(p1v << " "<< p2v << " " << p3v);
 	//Create two planes for each pointset
 	Ogre::Plane pu(p1u, p2u, p3u);
 	Ogre::Plane pv(p1v, p2v, p3v);
@@ -307,8 +315,12 @@ bool Distortion::interpolate(DistortionVertex& dv_interp, const DistortionVertex
 		return false;
 	}
 
-	ROS_INFO("INTERP: %.2f, %.2f", dv_interp.pos[0], dv_interp.pos[1]);
-	ROS_INFO_STREAM(pu.normal << " "<< pv.normal);
+	//ROS_INFO_STREAM("P1: "<<p1v);
+	//ROS_INFO_STREAM("P2: "<<p2v);
+	//ROS_INFO_STREAM("P3: "<<p3v);
+	//ROS_INFO("X,Y IN: %.2f, %.2f", dv_interp.pos[0], dv_interp.pos[1]);
+	//ROS_INFO_STREAM("u ABC:"<<pu.normal);
+	//ROS_INFO_STREAM("v ABC:"<<pv.normal);
 
 	// Find u and v coordinates for fixed x and y on previously defined planes.
 	//Z = -(AX + BY + D)/C;
@@ -318,7 +330,7 @@ bool Distortion::interpolate(DistortionVertex& dv_interp, const DistortionVertex
 	dv_interp.tex[1] = -(pv.normal.x*dv_interp.pos[0] + 
 						 pv.normal.y*dv_interp.pos[1] + pv.d) / pv.normal.z; //v
 
-	ROS_INFO("TEX: %.2f, %.2f", dv_interp.tex[0], dv_interp.tex[1]);
+	//ROS_INFO("TEX: %.2f, %.2f", dv_interp.tex[0], dv_interp.tex[1]);
 	return  true;
 }
 

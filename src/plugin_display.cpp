@@ -225,10 +225,11 @@ void PluginDisplay::updateCamera(float wall_dt, float ros_dt)
 {
 	//ROS_INFO("PluginDisplay updateCamera");
 
+	//Synchronize rotation and position of the scene in rviz window.
 	const Ogre::Camera *cam = context_->getViewManager()->getCurrent()->getCamera();
 	Ogre::Vector3 pos = cam->getDerivedPosition();
 	Ogre::Quaternion ori = cam->getDerivedOrientation();
-	scene_node_->setPosition(pos+Ogre::Vector3(0,0,0));
+	scene_node_->setPosition(pos);
 	scene_node_->setOrientation(ori);
 	if(osvr_client_)
 	{
