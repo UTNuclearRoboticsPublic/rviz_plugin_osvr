@@ -14,7 +14,7 @@
 
 namespace rviz_plugin_osvr {
 
-Distortion::Distortion() : desired_triangles_(400), overfill_factor_(1)
+Distortion::Distortion() : desired_triangles_(800), overfill_factor_(1)
 {
 	//initialize dataset names
 	names_.clear();
@@ -287,7 +287,7 @@ bool Distortion::nearlyCollinear(const Point2D& p1, const Point2D& p2,const Poin
 	v1.normalise();
 	v2.normalise();
 
-	return fabs(v1.dotProduct(v2)) > 0.9;
+	return fabs(v1.dotProduct(v2)) > 0.75;
 }
 
 bool Distortion::interpolate(DistortionVertex& dv_interp, const DistortionVertex& dv1, 

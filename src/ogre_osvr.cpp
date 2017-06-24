@@ -14,6 +14,7 @@
 #include "OGRE/OgreCompositionPass.h"
 #include "OGRE/OgreHardwarePixelBuffer.h"
 #include "OGRE/OgreManualObject.h"
+#include "OGRE/OgreTextureUnitState.h"
 
 #include <osvr/ClientKit/ClientKit.h>
 #include <osvr/ClientKit/Display.h>
@@ -35,10 +36,10 @@ namespace rviz_plugin_osvr
 		for(int i=0;i<2;i++)
 		{
 			cameras_[i] = 0;
-			external_camera_ = 0;
 			viewports_[i] = 0;
-			external_viewport_ = 0;
 		}
+		external_camera_ = 0;
+		external_viewport_ = 0;
 		ROS_INFO("OsvrClient created");
 	}
 
@@ -88,7 +89,7 @@ namespace rviz_plugin_osvr
 		ROS_INFO("Available distortions:");
 		for(auto& dist_name : dist_names)
 		{
-			ROS_INFO_STREAM("/t"<<dist_name);
+			ROS_INFO_STREAM("--->>>"<<dist_name);
 		}
 
 		distortion_.parse(dist_names[2]); //TODO: fixed choice
@@ -117,7 +118,7 @@ namespace rviz_plugin_osvr
 			camera_node_ = sm->getRootSceneNode()->createChildSceneNode("StereoCameraNode");
 		}
 		
-		// Create external scenemanager and viewport for distortion mesh.  
+		// Create external scenemanager, ortho camera, and viewport for distortion mesh.  
 		external_scene_manager_ = rviz::RenderSystem::get()->root()->createSceneManager(Ogre::ST_GENERIC);
 		external_scene_manager_ ->setAmbientLight(Ogre::ColourValue(1, 1, 1));
 		
@@ -132,7 +133,7 @@ namespace rviz_plugin_osvr
 		external_viewport_ -> setOverlaysEnabled(true);
 
 		
-
+		// Prepare cameras and viewports for each eye
 		for (int i = 0; i < 2; ++i)
 		{
 			// Setup cameras
@@ -141,6 +142,7 @@ namespace rviz_plugin_osvr
 			cameras_[i]->setNearClipDistance(g_defaultNearClip);
 			cameras_[i]->setFarClipDistance(g_defaultFarClip);
 			cameras_[i]->setPosition((i * 2 - 1) * g_defaultIPD * 0.5f, 0, 0);
+		//	cameras_[i]->setAspectRatio(1.0);
 			cameras_[i]->setFOVy(Ogre::Degree(90));
 
 
@@ -159,10 +161,12 @@ namespace rviz_plugin_osvr
 					i==0 ? "OsvrMaterialLeft" : "OsvrMaterialRight",
 					"rviz_plugin_osvr");
 			Ogre::Pass* pass = materials_[i]->getTechnique(0)->getPass(0);
-			pass->createTextureUnitState();
-			pass->getTextureUnitState(0)->setTexture(textures_[i]);
+			Ogre::TextureUnitState* unit_state = pass->createTextureUnitState();
+			unit_state->setTexture(textures_[i]);
+			unit_state->setTextureAddressingMode(Ogre::TextureUnitState::TAM_BORDER);
 
-			// Create viewport for each camera
+
+			// Create viewport for each stereo camera.
 			viewports_[i] = textures_[i]->getBuffer()->getRenderTarget()->addViewport(cameras_[i]);
 			viewports_[i]->setBackgroundColour(g_defaultViewportColour);
 			viewports_[i]->setClearEveryFrame(true);
@@ -170,15 +174,15 @@ namespace rviz_plugin_osvr
 			viewports_[i]->setShadowsEnabled(true);
 		}
 
+		// Create external scene node for holding distortion meshes. 
 		Ogre::SceneNode* meshNode = external_scene_manager_ -> getRootSceneNode() -> createChildSceneNode();
 		const DistortionMeshes dist_meshes = distortion_.getMeshes();
 
-
 		unsigned int eyeIdx = 0;
-		for(auto& dist_mesh : dist_meshes) // One mesh per eye
+		for(auto& dist_mesh : dist_meshes) // Loop over meshes, one per each eye.
 		{
 			if (eyeIdx > 1)
-				break; //limited to two meshes currently
+				break; // Hard limit for maximum of two meshes/eyes.
 			
 			Ogre::ManualObject *manObj = external_scene_manager_->createManualObject(
 					(eyeIdx==0) ? "OsvrObjectLeft" : "OsvrObjectRight");
@@ -188,8 +192,7 @@ namespace rviz_plugin_osvr
 			//set vertices
 			for(auto& vert : dist_mesh.vertices)
 			{
-				//ROS_INFO("AddingVertex %.2f, %.2f --> %.2f, %.2f", vert.pos[0]+eyeIdx, vert.pos[1], vert.tex[0], vert.tex[1]);
-				//manObj->position(vert.pos[0] - eyeIdx, vert.pos[1], 0.0);
+				//place vertices along space X:[0..2], Y:[0..1]
 				manObj->position(vert.pos[0]+eyeIdx, vert.pos[1], 0.0);
 				manObj->textureCoord(vert.tex[0], vert.tex[1]);
 			}
@@ -206,10 +209,11 @@ namespace rviz_plugin_osvr
 			eyeIdx++;
 		}
 
-		// Move mesh vertically to viewport center and push towards negative z-direction.
+		// Move mesh to viewport center, i.e. range X:[-1..1], Y:[-0.5..0.5]
+		// push it towards negative z-direction.
 		meshNode->setPosition(-1,-0.5,-1);
 
-
+/*
 DistortionPointMaps maps = distortion_.getDistortionPointMaps();
 Ogre::SceneNode* dbgNode = sm->getRootSceneNode()->createChildSceneNode("DebugNode");
  for(const auto& map : maps)
@@ -220,72 +224,13 @@ Ogre::SceneNode* dbgNode = sm->getRootSceneNode()->createChildSceneNode("DebugNo
 	 {
 		 dbgObj->position(dv.pos[0], dv.pos[1],Distortion::getDistanceBetweenPoints(dv.pos,dv.tex));
 		 dbgObj->colour(0.0,0.0,1.0);
-		 //dbgObj->position(dv.pos[0], dv.pos[1],0);
-		 //dbgObj->colour(0.0,1.0,0.0);
-
 	 }
 	 dbgObj->end();
 	 dbgNode->attachObject(dbgObj);
 	 break;
  }
+*/
 
-
-
-		//pass->setFragmentProgram("OsvrFragmentProgram");
-		//pass->setVertexProgram("OsvrVertexProgram");
-
-		//Ogre::GpuProgramParametersSharedPtr shader_params = pass->getFragmentProgramParameters();
-		//shader_params->setNamedConstant("LensCenter", 0.5f + g_defaultProjectionCenterOffset / 
-		//		2.0f * (i==0) ? 1 : -1);
-		//pass->setFragmentProgram("OsvrFragmentProgram");
-		//pass->setVertexProgram("OsvrVertexProgram");
-
-		//Ogre::GpuProgramParametersSharedPtr shader_params = pass->getFragmentProgramParameters();
-		//shader_params->setNamedConstant("LensCenter", 0.5f + g_defaultProjectionCenterOffset / 
-		//		2.0f * (i==0) ? 1 : -1);
-
-		//extObjRight->begin("OsvrMaterialRight", Ogre::RenderOperation::OT_TRIANGLE_LIST);
-
-
-
-			//if (m_stereoConfig)
-			//{
-			//	// Setup cameras.
-			//	m_cameras[i]->setNearClipDistance(m_stereoConfig->GetEyeToScreenDistance());
-			//	m_cameras[i]->setFarClipDistance(g_defaultFarClip);
-			//	m_cameras[i]->setPosition((i * 2 - 1) * m_stereoConfig->GetIPD() * 0.5f, 0, 0);
-			//	m_cameras[i]->setAspectRatio(m_stereoConfig->GetAspect());
-			//	m_cameras[i]->setFOVy(Ogre::Radian(m_stereoConfig->GetYFOVRadians()));
-			//		                                   
-			//}
-			//else
-			//{
-			
-
-//		cameras_[0] = sm->createCamera("CameraLeft");
-//		cameras_[1] = sm->createCamera("CameraRight");
-
-//		Ogre::MaterialPtr matLeft = Ogre::MaterialManager::getSingleton().getByName("Ogre/Compositor/Osvr");
-//		Ogre::MaterialPtr matRight = matLeft->clone("Ogre/Compositor/Osvr/Right");
-
-//		Ogre::Vector4 hmdchrom = Ogre::Vector4(g_defaultChromAb);
-//		pParamsLeft->setNamedConstant("ChromAbParam", hmdchrom);
-//		pParamsRight->setNamedConstant("ChromAbParam", hmdchrom);
-
-//		Ogre::CompositorPtr comp = Ogre::CompositorManager::getSingleton().getByName("OsvrRight");
-//		comp->getTechnique(0)->getOutputTargetPass()->getPass(0)->setMaterialName("Ogre/Compositor/Osvr/Right");
-			//compositors_[i] = Ogre::CompositorManager::getSingleton().addCompositor(viewports_[i],
-			//												   i == 0 ? "OsvrLeft" : "OsvrRight");
-			//compositors_[i]->setEnabled(true);
-			//
-
-//		Ogre::GpuProgramParametersSharedPtr pParamsRight =
-//			matRight->getTechnique(0)->getPass(0)->getFragmentProgramParameters();
-
-		//warp describes the transformation from the rectangular image to warped image, which suits for the head mounted display
-//		pParamsRight->setNamedConstant("HmdWarpParam", hmdwarp);
-//		pParamsRight->setNamedConstant("LensCenter", 0.5f - g_defaultProjectionCenterOffset / 2.0f );
-//
 		return true;
 	}
 
@@ -347,8 +292,8 @@ Ogre::SceneNode* dbgNode = sm->getRootSceneNode()->createChildSceneNode("DebugNo
 					Ogre::Quaternion ori;
 					ori.w = (Ogre::Real)osvrQuatGetW(&pose.rotation);
 					ori.x = (Ogre::Real)osvrQuatGetX(&pose.rotation);
-					ori.y = -(Ogre::Real)osvrQuatGetY(&pose.rotation);
-					ori.z = -(Ogre::Real)osvrQuatGetZ(&pose.rotation);
+					ori.y = (Ogre::Real)osvrQuatGetY(&pose.rotation);
+					ori.z = (Ogre::Real)osvrQuatGetZ(&pose.rotation);
 					ori.normalise();
 
 //					ROS_INFO("rot: %f %f %f %f",ori.x, ori.y, ori.z, ori.w);

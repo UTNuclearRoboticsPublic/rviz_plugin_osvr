@@ -13,6 +13,10 @@
 #include <rviz/ogre_helpers/render_system.h>
 #include <rviz/frame_manager.h>
 
+#include <rviz/properties/bool_property.h>
+#include <rviz/properties/tf_frame_property.h>
+#include <rviz/properties/vector_property.h>
+
 #include <osvr/ClientKit/Context.h>
 #include <osvr/ClientKit/Display.h>
 //#include <osvr/ClientKit/DisplayConfig.h>
@@ -72,9 +76,18 @@ void PluginDisplay::onInitialize()
 {
 	ROS_INFO("PluginDisplay::onInitialize");
 
-	fullscreen_property_ = new rviz::BoolProperty( "Render to Oculus", false,
+	// initialize all the plugin properties in rviz
+	fullscreen_property_ = new rviz::BoolProperty("Render to Oculus", false,
 		"If checked, will render fullscreen on your secondary screen. Otherwise, shows a window.",
 		this, SLOT(onFullScreenChanged()));
+
+	tf_frame_property_ = new rviz::TfFrameProperty("Target Frame", "<Fixed Frame>", 
+			"Tf frame that VR camera follows", this, context_->getFrameManager(), true);
+
+	offset_property_ = new rviz::VectorProperty("Offset", Ogre::Vector3(0,0,0),
+		   "Additional offset of the VR camera from the followed RViz camera or target frame.", this);
+
+
 	render_widget_ = new rviz::RenderWidget(rviz::RenderSystem::get());
 	render_widget_->setVisible(false);
 	render_widget_->setWindowTitle("OSVR View");
@@ -223,8 +236,6 @@ void PluginDisplay::update(float wall_dt, float ros_dt)
 
 void PluginDisplay::updateCamera(float wall_dt, float ros_dt)
 {
-	//ROS_INFO("PluginDisplay updateCamera");
-
 	//Synchronize rotation and position of the scene in rviz window.
 	const Ogre::Camera *cam = context_->getViewManager()->getCurrent()->getCamera();
 	Ogre::Vector3 pos = cam->getDerivedPosition();
@@ -235,6 +246,7 @@ void PluginDisplay::updateCamera(float wall_dt, float ros_dt)
 	{
 		osvr_client_->update(wall_dt, ros_dt);
 	}
+
 }
 
 void PluginDisplay::reset()

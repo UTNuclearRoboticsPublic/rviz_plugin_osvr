@@ -9,6 +9,9 @@
 
 namespace rviz{
 	class RenderWidget;
+	class BoolProperty;
+	class TfFrameProperty;
+	class VectorProperty;
 }
 
 namespace rviz_plugin_osvr
@@ -44,6 +47,9 @@ namespace rviz_plugin_osvr
 		private:
 		
 			rviz::BoolProperty *fullscreen_property_;
+			rviz::TfFrameProperty *tf_frame_property_;
+			rviz::VectorProperty *offset_property_;
+
 		
 			rviz::RenderWidget *render_widget_;
 			osvr::clientkit::ClientContext *osvr_context_;
