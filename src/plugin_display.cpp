@@ -222,7 +222,7 @@ void PluginDisplay::postRenderTargetUpdate(const Ogre::RenderTargetEvent& evt)
 {
 	//ROS_INFO("postRender callback");
 	Ogre::RenderWindow *window = render_widget_->getRenderWindow();
-	//window->swapBuffers();
+	window->swapBuffers();
 }
 
 
@@ -230,8 +230,8 @@ void PluginDisplay::update(float wall_dt, float ros_dt)
 {
 	//ROS_INFO("PluginDisplay update");
 	updateCamera(wall_dt, ros_dt);
-	Ogre::RenderWindow *window = render_widget_->getRenderWindow();
-	window->update(true);
+	//Ogre::RenderWindow *window = render_widget_->getRenderWindow();
+	//window->update(true);
 }
 
 void PluginDisplay::updateCamera(float wall_dt, float ros_dt)
@@ -240,7 +240,10 @@ void PluginDisplay::updateCamera(float wall_dt, float ros_dt)
 	const Ogre::Camera *cam = context_->getViewManager()->getCurrent()->getCamera();
 	Ogre::Vector3 pos = cam->getDerivedPosition();
 	Ogre::Quaternion ori = cam->getDerivedOrientation();
+	Ogre::Quaternion oneEightyTurnX(Ogre::Degree(90),Ogre::Vector3::UNIT_X);
+	Ogre::Quaternion oneEightyTurnY(Ogre::Degree(-90),Ogre::Vector3::UNIT_Y);
 	scene_node_->setPosition(pos);
+	//scene_node_->setOrientation(ori*oneEightyTurnX*oneEightyTurnY);
 	scene_node_->setOrientation(ori);
 	if(osvr_client_)
 	{
