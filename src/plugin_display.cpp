@@ -100,7 +100,7 @@ void PluginDisplay::onInitialize()
 			Qt::WindowMaximizeButtonHint);
 	Ogre::RenderWindow *window = render_widget_->getRenderWindow();
 	window->setVisible(false);
-	window->setAutoUpdated(true);
+	window->setAutoUpdated(false);
 	window->addListener(this);
 
 	scene_node_ = scene_manager_->getRootSceneNode()->createChildSceneNode();
@@ -146,8 +146,6 @@ void PluginDisplay::onFullScreenChanged()
 
 void PluginDisplay::preRenderTargetUpdate(const Ogre::RenderTargetEvent& evt)
 {
-	//ROS_INFO("preRender callback");
-	//updateCamera(0,0);
 }
 
 
@@ -230,24 +228,18 @@ void PluginDisplay::update(float wall_dt, float ros_dt)
 {
 	//ROS_INFO("PluginDisplay update");
 	updateCamera(wall_dt, ros_dt);
-	//Ogre::RenderWindow *window = render_widget_->getRenderWindow();
-	//window->update(true);
+	render_widget_->getRenderWindow()->update(false);
 }
 
 void PluginDisplay::updateCamera(float wall_dt, float ros_dt)
 {
 	//Synchronize rotation and position of the scene in rviz window.
 	const Ogre::Camera *cam = context_->getViewManager()->getCurrent()->getCamera();
-	Ogre::Vector3 pos = cam->getDerivedPosition();
-	Ogre::Quaternion ori = cam->getDerivedOrientation();
-	Ogre::Quaternion oneEightyTurnX(Ogre::Degree(90),Ogre::Vector3::UNIT_X);
-	Ogre::Quaternion oneEightyTurnY(Ogre::Degree(-90),Ogre::Vector3::UNIT_Y);
-	scene_node_->setPosition(pos);
-	//scene_node_->setOrientation(ori*oneEightyTurnX*oneEightyTurnY);
-	scene_node_->setOrientation(ori);
+	scene_node_->setPosition(cam->getDerivedPosition());
+	scene_node_->setOrientation(cam->getDerivedOrientation());
 	if(osvr_client_)
 	{
-		osvr_client_->update(wall_dt, ros_dt);
+		osvr_client_->update();
 	}
 
 }

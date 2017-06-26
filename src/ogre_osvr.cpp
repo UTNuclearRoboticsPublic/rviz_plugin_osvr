@@ -127,6 +127,8 @@ namespace rviz_plugin_osvr
 		external_camera_ -> setNearClipDistance(0.001);
 		external_camera_ -> setProjectionType(Ogre::PT_ORTHOGRAPHIC);
 		external_camera_ -> setOrthoWindow(2,1);
+		//180 rotation for HDK2
+		external_camera_ ->setOrientation(Ogre::Quaternion(Ogre::Degree(180), Ogre::Vector3::UNIT_Z));
 
 		external_viewport_ = win->addViewport(external_camera_);
 		external_viewport_ -> setBackgroundColour(g_defaultViewportColour);
@@ -192,12 +194,15 @@ namespace rviz_plugin_osvr
 			//set vertices
 			for(auto& vert : dist_mesh.vertices)
 			{
-				//place vertices along space X:[0..2], Y:[0..1]
+				// place vertices along space X:[0..2], Y:[0..1]
 				manObj->position(vert.pos[0]+eyeIdx, vert.pos[1], 0.0);
-				manObj->textureCoord(vert.tex[0], vert.tex[1]);
+
+				// assign uv coordinates, transform from 
+				// bottom-left convention (osvr) to top-left convention (ogre3d)
+				manObj->textureCoord(vert.tex[0], 1-vert.tex[1]);
 			}
 
-			// set indices
+			// set indices (grouped by three representing triangles)
 			for(auto& idx : dist_mesh.indices)
 			{
 				manObj->index(idx);
@@ -210,37 +215,14 @@ namespace rviz_plugin_osvr
 		}
 
 		// Move mesh to viewport center, i.e. range X:[-1..1], Y:[-0.5..0.5]
-		// push it towards negative z-direction.
+		// push it towards negative z-direction i.e. away from external camera.
 		meshNode->setPosition(-1,-0.5,-1);
-
-/*
-DistortionPointMaps maps = distortion_.getDistortionPointMaps();
-Ogre::SceneNode* dbgNode = sm->getRootSceneNode()->createChildSceneNode("DebugNode");
- for(const auto& map : maps)
- {
-	 Ogre::ManualObject *dbgObj = external_scene_manager_->createManualObject("OsvrObjectDebug");
-	 dbgObj->begin("OsvrMaterialLeft", Ogre::RenderOperation::OT_POINT_LIST);
-	 for(const auto& dv : map)
-	 {
-		 dbgObj->position(dv.pos[0], dv.pos[1],Distortion::getDistanceBetweenPoints(dv.pos,dv.tex));
-		 dbgObj->colour(0.0,0.0,1.0);
-	 }
-	 dbgObj->end();
-	 dbgNode->attachObject(dbgObj);
-	 break;
- }
-*/
 
 		return true;
 	}
 
-	void OsvrClient::update(float wall_dt, float ros_dt)
+	void OsvrClient::update()
 	{
-	    //const Ogre::Camera *cam = context_->getViewManager()->getCurrent()->getCamera();
-	    //pos = cam->getDerivedPosition();
-	    //ori = cam->getDerivedOrientation();
-		//camera_node_->setOrientation(getOrientation());
-		
 		if (osvr_ctx_.checkStatus())
 		{
 			osvr_ctx_.update();
@@ -299,7 +281,7 @@ Ogre::SceneNode* dbgNode = sm->getRootSceneNode()->createChildSceneNode("DebugNo
 //					ROS_INFO("rot: %f %f %f %f",ori.x, ori.y, ori.z, ori.w);
 					
 					Ogre::Vector3 pos(
-							(Ogre::Real)-pose.translation.data[0],
+							(Ogre::Real)pose.translation.data[0],
 							(Ogre::Real)pose.translation.data[1],
 							(Ogre::Real)pose.translation.data[2]);
 

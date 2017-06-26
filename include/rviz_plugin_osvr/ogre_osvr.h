@@ -64,7 +64,7 @@ namespace rviz_plugin_osvr
 			~OsvrClient(void);
 			void setupDistortion();
 			bool setupOgre(Ogre::SceneManager *sm, Ogre::RenderWindow *win, Ogre::SceneNode *parent);
-			void update(float wall_dt, float ros_dt);
+			void update();
 
 		protected:
 			Ogre::RenderWindow* window_;
