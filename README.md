@@ -110,5 +110,5 @@ catkin build
 
 ## USAGE
 The plugin needs a running **osvr_server**, which you can either add to a system start-up or run via launch scripts:  
-`roslaunch rviz_plugin_osvr ubot_demo.launch`  
+`roslaunch rviz_plugin_osvr rviz_plugin_osvr.launch`  
 Open up RViz, load the osvr display plugin, and have fun!

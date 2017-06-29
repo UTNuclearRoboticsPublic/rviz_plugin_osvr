@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<launch>
+	<node name="osvr_server" pkg="rviz_plugin_osvr" type="start_osvr_server.sh" />
+	<node name="rviz" args="-l" pkg="rviz" type="rviz" output="screen"/>
+</launch>

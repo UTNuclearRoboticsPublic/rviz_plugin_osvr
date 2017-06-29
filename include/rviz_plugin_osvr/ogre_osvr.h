@@ -57,6 +57,7 @@ namespace rviz_plugin_osvr
 		public:
 			OsvrClient(void); 
 			~OsvrClient(void);
+			bool connectToServer();
 			void setupDistortion();
 			bool setupOgre(Ogre::SceneManager *sm, Ogre::RenderWindow *win, Ogre::SceneNode *parent);
 			void update();
@@ -74,8 +75,8 @@ namespace rviz_plugin_osvr
 			Ogre::Viewport* external_viewport_;
 			Ogre::Camera* external_camera_;
 
-			osvr::clientkit::ClientContext osvr_ctx_;
-			osvr::clientkit::DisplayConfig osvr_disp_conf_;
+			osvr::clientkit::ClientContext* osvr_ctx_;
+			osvr::clientkit::DisplayConfig* osvr_disp_conf_;
 
 		private:
 			Distortion distortion_;

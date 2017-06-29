@@ -18,10 +18,10 @@
 #include <rviz/properties/tf_frame_property.h>
 #include <rviz/properties/vector_property.h>
 
-#include <osvr/ClientKit/Context.h>
-#include <osvr/ClientKit/Display.h>
+//#include <osvr/ClientKit/Context.h>
+//#include <osvr/ClientKit/Display.h>
 //#include <osvr/ClientKit/DisplayConfig.h>
-#include <osvr/ClientKit/Parameters.h>
+//#include <osvr/ClientKit/Parameters.h>
 #include <osvr/ClientKit/ServerAutoStartC.h>
 
 #include <QWidget>
@@ -34,29 +34,18 @@
 
 namespace rviz_plugin_osvr{
 
-PluginDisplay::PluginDisplay() : osvr_client_(0), osvr_context_(0), render_widget_(0), scene_node_(0), 
+PluginDisplay::PluginDisplay() : osvr_client_(0), render_widget_(0), scene_node_(0), 
 		fullscreen_property_(0)
 {
-	Ogre::MaterialManager::getSingleton().setVerbose(true);
-	std::string rviz_path = ros::package::getPath(ROS_PACKAGE_NAME);
-	Ogre::ResourceGroupManager* rm = Ogre::ResourceGroupManager::getSingletonPtr();
-	rm->addResourceLocation( rviz_path + "/ogre_media", "FileSystem", ROS_PACKAGE_NAME);
-	rm->initialiseResourceGroup(ROS_PACKAGE_NAME);
-	//osvrClientAttemptServerAutoStart();
+//	Ogre::MaterialManager::getSingleton().setVerbose(true);
 }
 
 PluginDisplay::~PluginDisplay()
 {
 	ROS_INFO("PluginDisplay::~PluginDisplay()");
-	delete osvr_context_;
-	osvr_context_=0;
 	delete osvr_client_;
 	osvr_client_=0;
-	ROS_INFO("removed osvr context and osvr client");
-//		osvrClientReleaseAutoStartedServer();
-	std::string rviz_path = ros::package::getPath(ROS_PACKAGE_NAME);
-	Ogre::ResourceGroupManager* rm = Ogre::ResourceGroupManager::getSingletonPtr();
-	rm->removeResourceLocation( rviz_path + "/ogre_media", ROS_PACKAGE_NAME);
+	ROS_INFO("removed osvr osvr client");
 
 	ROS_INFO("removed resource path from ogre resource manager");
 	if(scene_node_)
@@ -123,7 +112,8 @@ void PluginDisplay::onInitialize()
 
 void PluginDisplay::onEnable()
 {
-	ROS_INFO("Enabling rviz_plugin_osvr");
+	
+	ROS_INFO("Enabling %s", ROS_PACKAGE_NAME);
 	if(!render_widget_ || !scene_node_)
 	{
 		ROS_ERROR("Enabling plugin failed, because render_widget_ or scene_node_ is NULL");
@@ -143,16 +133,27 @@ void PluginDisplay::onEnable()
 
 	if(!osvr_client_)
 	{
+		// Start osvr server, create our osvr client, and try to connect.
+		// The default server config is expected at ~/.config/osvr/osvr_server_config.json
+		//
+		// osvrClientAttemptServerAutoStart(); 
+		//
+		// Cannot use that, due to linux support for osvrStartProcess()
+		// in inc/osvr/Util/ProcessUtils.h is not implemented yet.
+		
 		osvr_client_ = new OsvrClient();
 		osvr_client_->setupDistortion();
 		osvr_client_->setupOgre(scene_manager_, window, scene_node_);
 	}
+
 }
+
 
 
 void PluginDisplay::onDisable()
 {
-	ROS_INFO("Disabling rviz_plugin_osvr");
+	
+	ROS_INFO("Disabling %s", ROS_PACKAGE_NAME);
 
 	Ogre::RenderWindow *window = render_widget_->getRenderWindow();
 	if(window)
@@ -162,17 +163,12 @@ void PluginDisplay::onDisable()
 
 	if(osvr_client_)
 	{
+		// osvrClientReleaseAutoStartedServer();
+		// not yet supported in linux
+		
 		delete osvr_client_;
 		osvr_client_=0;
 	}
-
-
-	if(osvr_context_)
-	{
-		delete osvr_context_;
-		osvr_context_=0;
-	}
-
 }
 
 

@@ -1,10 +1,10 @@
 #pragma once
 
 #include <QObject>
-#include <rviz/display.h>
 #include <OGRE/OgreRenderTargetListener.h>
+#include <rviz/display.h>
 #include <rviz_plugin_osvr/ogre_osvr.h>
-#include "osvr/ClientKit/ClientKit.h"
+//#include "osvr/ClientKit/ClientKit.h"
 //#include <QWidget.h>
 
 namespace rviz{
@@ -54,7 +54,7 @@ namespace rviz_plugin_osvr
 
 		
 			rviz::RenderWidget *render_widget_;
-			osvr::clientkit::ClientContext *osvr_context_;
+//			osvr::clientkit::ClientContext *osvr_context_;
 			Ogre::SceneNode *scene_node_;
 
 			#ifndef Q_MOC_RUN
