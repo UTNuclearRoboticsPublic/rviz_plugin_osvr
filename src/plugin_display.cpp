@@ -14,6 +14,7 @@
 #include <rviz/frame_manager.h>
 
 #include <rviz/properties/bool_property.h>
+#include <rviz/properties/enum_property.h>
 #include <rviz/properties/tf_frame_property.h>
 #include <rviz/properties/vector_property.h>
 
@@ -24,7 +25,11 @@
 #include <osvr/ClientKit/ServerAutoStartC.h>
 
 #include <QWidget>
+#include <QWindow>
+#include <QScreen>
+//#include <QRect>
 #include <QApplication>
+#include <QGuiApplication>
 #include <QDesktopWidget>
 
 namespace rviz_plugin_osvr{
@@ -77,9 +82,17 @@ void PluginDisplay::onInitialize()
 	ROS_INFO("PluginDisplay::onInitialize");
 
 	// initialize all the plugin properties in rviz
-	fullscreen_property_ = new rviz::BoolProperty("Render to Oculus", false,
-		"If checked, will render fullscreen on your secondary screen. Otherwise, shows a window.",
+	fullscreen_property_ = new rviz::BoolProperty("Full Screen", false,
+		"If checked, will render fullscreen. Otherwise, shows a window.",
 		this, SLOT(onFullScreenChanged()));
+
+	fullscreen_name_property_ = new rviz::EnumProperty("Screen name", "Select screen",
+		"The name of a screen where osvr context appears",
+		this, SLOT(onFullScreenChanged()));
+	for(const auto& screen : QGuiApplication::screens())
+	{
+		fullscreen_name_property_->addOption(screen->name());
+	}
 
 	tf_frame_property_ = new rviz::TfFrameProperty("Target Frame", "<Fixed Frame>", 
 			"Tf frame that VR camera follows", this, context_->getFrameManager(), true);
@@ -99,7 +112,6 @@ void PluginDisplay::onInitialize()
 			Qt::WindowTitleHint | 
 			Qt::WindowMaximizeButtonHint);
 	Ogre::RenderWindow *window = render_widget_->getRenderWindow();
-	window->setVisible(false);
 	window->setAutoUpdated(false);
 	window->addListener(this);
 
@@ -108,60 +120,24 @@ void PluginDisplay::onInitialize()
 	
 }
 
-void PluginDisplay::onFullScreenChanged()
-{
-	if ( !osvr_client_ )
-	{
-		return;
-	}
-
-	if ( fullscreen_property_->getBool() && QApplication::desktop()->numScreens() > 1 )
-	{
-		QRect screen_res = QApplication::desktop()->screenGeometry(0);
-		//render_widget->setWindowFlags();
-		render_widget_->move(screen_res.x(),screen_res.y());
-		render_widget_->setGeometry( screen_res );
-		render_widget_->showFullScreen();
-	}
-	else
-	{
-		int x_res = 1280;
-		int y_res = 800;
-
-		osvr::clientkit::DisplayConfig disp_cfg(*osvr_context_);
-		osvr::clientkit::DisplayDimensions surf_disp_dim = disp_cfg.getDisplayDimensions(2);
-		if (disp_cfg.valid())
-		{
-			x_res = surf_disp_dim.width;
-			y_res = surf_disp_dim.height;
-		}
-		ROS_INFO_STREAM("RES: "<<x_res<<" "<<y_res<<std::endl);
-		int primary_screen = QApplication::desktop()->primaryScreen();
-		QRect screen_res = QApplication::desktop()->screenGeometry( primary_screen );
-		render_widget_->setGeometry( screen_res.x(), screen_res.y(), x_res, y_res );
-		render_widget_->showNormal();
-	}
-}
-
-
-void PluginDisplay::preRenderTargetUpdate(const Ogre::RenderTargetEvent& evt)
-{
-}
-
 
 void PluginDisplay::onEnable()
 {
-	ROS_INFO("PluginDisplay::onEnable");
+	ROS_INFO("Enabling rviz_plugin_osvr");
 	if(!render_widget_ || !scene_node_)
 	{
-		ROS_INFO("PluginDisplay::onEnable render_widget_ or scene_node_ is NULL");
+		ROS_ERROR("Enabling plugin failed, because render_widget_ or scene_node_ is NULL");
 		return;
 	}
 
 	Ogre::RenderWindow *window = render_widget_->getRenderWindow();
-	if(!window)
+	if(window)
 	{
-		ROS_INFO("PluginDisplay::onEnable window is NULL");
+		window->setVisible(true);
+	}
+	else
+	{
+		ROS_ERROR("Enabling plugin failed, because getRenderWindow() returned NULL");
 		return;
 	}
 
@@ -171,30 +147,19 @@ void PluginDisplay::onEnable()
 		osvr_client_->setupDistortion();
 		osvr_client_->setupOgre(scene_manager_, window, scene_node_);
 	}
-	
-	if (!osvr_context_)
-	{
-		osvr_context_ = new osvr::clientkit::ClientContext("com.osvr.rviz_plugin_osvr");
-		ROS_INFO_STREAM("osvr ClientContext created"<<std::endl);
-	}
-
-	int x_res = 1280;
-	int y_res = 800;
-	if (osvr_client_)
-	{ 
-		int primary_screen = QApplication::desktop()->primaryScreen();
-		QRect screen_res = QApplication::desktop()->screenGeometry( primary_screen  );
-		render_widget_->setGeometry( screen_res.x(), screen_res.y(), x_res, y_res  );
-		render_widget_->showNormal();   
-	}
-
-	window->setVisible(true);
 }
 
 
 void PluginDisplay::onDisable()
 {
-	ROS_INFO("PluginDisplay::onDisable");
+	ROS_INFO("Disabling rviz_plugin_osvr");
+
+	Ogre::RenderWindow *window = render_widget_->getRenderWindow();
+	if(window)
+	{
+		window->setVisible(false);
+	}
+
 	if(osvr_client_)
 	{
 		delete osvr_client_;
@@ -208,13 +173,51 @@ void PluginDisplay::onDisable()
 		osvr_context_=0;
 	}
 
-	Ogre::RenderWindow *window = render_widget_->getRenderWindow();
-	if(window)
-	{
-		window->setVisible(false);
-		render_widget_->close();
-	}	
 }
+
+
+void PluginDisplay::onFullScreenChanged()
+{
+
+	QScreen* screen = QGuiApplication::primaryScreen();
+	int default_width = 1280;
+	int default_height = 800;
+	for(const auto& scr : QGuiApplication::screens())
+	{
+		// Identify user selected screen name from the list
+		if(scr->name() == fullscreen_name_property_->getString())
+		{
+			render_widget_->setGeometry(
+					scr->availableGeometry().x(),
+					scr->availableGeometry().y(),
+					default_width,
+					default_height);
+			ROS_INFO("%d %d",scr->availableGeometry().x(), scr->availableGeometry().y());
+			//render_widget_->saveGeometry();
+			screen = scr;
+			break;
+		}
+	}
+
+	if (fullscreen_property_->getBool())
+	{
+		ROS_INFO_STREAM("Going fullscreen on "<<screen->name().toUtf8().constData());
+		render_widget_->showFullScreen();
+	}
+	else
+	{
+		ROS_INFO_STREAM("Going windowed mode (" << default_width << " x " << default_height << ") on " << 
+				screen->name().toUtf8().constData());
+		render_widget_->showNormal();
+	}
+}
+
+
+
+void PluginDisplay::preRenderTargetUpdate(const Ogre::RenderTargetEvent& evt)
+{
+}
+
 
 void PluginDisplay::postRenderTargetUpdate(const Ogre::RenderTargetEvent& evt)
 {

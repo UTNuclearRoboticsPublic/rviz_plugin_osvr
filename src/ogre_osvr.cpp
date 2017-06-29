@@ -15,6 +15,8 @@
 #include "OGRE/OgreHardwarePixelBuffer.h"
 #include "OGRE/OgreManualObject.h"
 #include "OGRE/OgreTextureUnitState.h"
+#include "OGRE/OgreMaterialManager.h"
+#include "OGRE/OgreTextureManager.h"
 
 #include <osvr/ClientKit/ClientKit.h>
 #include <osvr/ClientKit/Display.h>
@@ -45,15 +47,24 @@ namespace rviz_plugin_osvr
 
 	OsvrClient::~OsvrClient(void)
 	{
-		ROS_INFO("OsvrClient destroyed");
+		if(window_)
+		{
+			window_->removeViewport(0);
+		}
+		
+		for(int i=0;i<2;i++)
+		{
+			materials_[i]->getTechnique(0)->getPass(0)->removeAllTextureUnitStates();
+			textures_[i]->getBuffer()->getRenderTarget()->removeViewport(0);
+			viewports_[i]=0;
+			Ogre::MaterialManager::getSingleton().remove(materials_[i]->getName());
+			materials_[i].setNull();
+			Ogre::TextureManager::getSingleton().remove(textures_[i]->getName());
+			textures_[i].setNull();
+		}
 
 		if(scene_manager_)
 		{
-			if(camera_node_)
-			{	
-				scene_manager_->destroySceneNode(camera_node_);
-				camera_node_=0;
-			}
 			if(cameras_[0])
 			{
 				scene_manager_->destroyCamera(cameras_[0]);
@@ -64,22 +75,15 @@ namespace rviz_plugin_osvr
 				scene_manager_->destroyCamera(cameras_[1]);
 				cameras_[1]=0;
 			}
-		}
-		if(window_)
-		{
-			for(int i=0;i<2;i++)
-			{
-				Ogre::CompositorManager::getSingletonPtr()->removeCompositorChain(viewports_[i]);
+			if(camera_node_)
+			{	
+				scene_manager_->destroySceneNode(camera_node_);
+				camera_node_=0;
 			}
+				viewports_[0]=0;
+		}
 
-			window_->removeAllViewports();
-			for(int i=0;i<2;i++)
-			{
-				viewports_[i]=0;
-				//compositors_[i]=0;
-			}
-			//TODO: remove materials and textures
-		}
+		ROS_INFO("OsvrClient destroyed");
 	}
 	
 	void OsvrClient::setupDistortion()

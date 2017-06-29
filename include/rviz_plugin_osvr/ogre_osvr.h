@@ -8,10 +8,6 @@
 
 #include "OGRE/OgreSceneManager.h"
 #include "OGRE/OgreRenderWindow.h"
-#include "OGRE/OgreCompositorManager.h"
-#include "OGRE/OgreCompositorInstance.h"
-#include "OGRE/OgreCompositionTargetPass.h"
-#include "OGRE/OgreCompositionPass.h"
 
 #include <osvr/ClientKit/ClientKit.h>
 #include <osvr/ClientKit/Display.h>
@@ -25,7 +21,6 @@ namespace Ogre
 	class Camera;
 	class SceneNode;
 	class Viewport;
-	class CompositorInstance;
 }
 
 namespace 
