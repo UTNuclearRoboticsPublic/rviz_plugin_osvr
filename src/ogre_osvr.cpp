@@ -32,9 +32,10 @@ namespace rviz_plugin_osvr
 		window_(0), 
 		scene_manager_(0), 
 		camera_node_(0),
-		head_offset_(Ogre::Vector3(0,-1.2,-0.3)),
 		osvr_ctx_(0), 
-		osvr_disp_conf_(0)
+		osvr_disp_conf_(0),
+		pos_offset_(Ogre::Vector3(0,0,0)),
+		pos_scale_(Ogre::Vector3(1,1,1))
 	{
 
 
@@ -292,35 +293,42 @@ namespace rviz_plugin_osvr
 		}
 
 
+		Ogre::Vector3 pos;
+		Ogre::Quaternion ori;
+		if(getPose(pos, ori))
+		{
+			camera_node_->setPosition(pos);
+			camera_node_->setOrientation(ori);
+		}
+	}
+
+
+	bool OsvrClient::getPose(Ogre::Vector3& pos, Ogre::Quaternion& ori)	
+	{
+		if (!connectToServer())
+		{
+			return false; // The server is probably not fully running yet
+		}
+
 		if (osvr_disp_conf_->getNumViewers()>0)
 		{
-			//ROS_INFO("Found %d viewers", osvr_disp_conf_->getNumViewers());
 			osvr::clientkit::Viewer viewer = osvr_disp_conf_->getViewer(0);
-			//		osvr_disp_conf_.forEachViewer([&](osvr::clientkit::Viewer viewer)
 			OSVR_Pose3 pose;
 			if(!viewer.getPose(pose))
-				return;
+				return false;
 
-			Ogre::Quaternion ori;
+			pos.x = (Ogre::Real)pose.translation.data[0];
+			pos.y =	(Ogre::Real)pose.translation.data[1];
+			pos.z =	(Ogre::Real)pose.translation.data[2];
+			pos+=pos_offset_;
+			pos*=pos_scale_;
+
 			ori.w = (Ogre::Real)osvrQuatGetW(&pose.rotation);
 			ori.x = (Ogre::Real)osvrQuatGetX(&pose.rotation);
 			ori.y = (Ogre::Real)osvrQuatGetY(&pose.rotation);
 			ori.z = (Ogre::Real)osvrQuatGetZ(&pose.rotation);
 			ori.normalise();
-
-
-			Ogre::Vector3 pos(
-					(Ogre::Real)pose.translation.data[0],
-					(Ogre::Real)pose.translation.data[1],
-					(Ogre::Real)pose.translation.data[2]);
-
-			camera_node_->setPosition((pos+head_offset_)*2);
-			camera_node_->setOrientation(ori);
-
-
 		}
-
+		return true;
 	}
-}
-
-
+} // namespace rviz_plugin_osvr

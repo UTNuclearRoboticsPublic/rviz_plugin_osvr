@@ -2,10 +2,11 @@
 
 #include <QObject>
 #include <OGRE/OgreRenderTargetListener.h>
+
 #include <rviz/display.h>
 #include <rviz_plugin_osvr/ogre_osvr.h>
-//#include "osvr/ClientKit/ClientKit.h"
-//#include <QWidget.h>
+
+#include <tf/transform_broadcaster.h>
 
 namespace rviz{
 	class RenderWidget;
@@ -13,6 +14,7 @@ namespace rviz{
 	class EnumProperty;
 	class TfFrameProperty;
 	class VectorProperty;
+	class StringProperty;
 }
 
 namespace rviz_plugin_osvr
@@ -44,14 +46,24 @@ namespace rviz_plugin_osvr
 
 		protected Q_SLOTS:
 			void onFullScreenChanged();
+			void onPubTfChanged();
+			void onFollowCamChanged();
+			void onPosOffsetChanged();
+			void onPosScaleChanged();
+			
 
 		private:
 		
 			rviz::BoolProperty *fullscreen_property_;
 			rviz::EnumProperty *fullscreen_name_property_;
 			rviz::TfFrameProperty *tf_frame_property_;
-			rviz::VectorProperty *offset_property_;
-
+			rviz::VectorProperty *pos_offset_property_;
+			rviz::VectorProperty *pos_scale_property_;
+			rviz::BoolProperty *pub_tf_property_;
+			rviz::StringProperty *pub_tf_frame_property_;
+			rviz::BoolProperty *follow_cam_property_;
+			
+			tf::TransformBroadcaster tf_pub_;			
 		
 			rviz::RenderWidget *render_widget_;
 			Ogre::SceneNode *scene_node_;

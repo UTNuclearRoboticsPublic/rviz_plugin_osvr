@@ -8,6 +8,8 @@
 
 #include "OGRE/OgreSceneManager.h"
 #include "OGRE/OgreRenderWindow.h"
+#include "OGRE/OgreVector3.h"
+#include "OGRE/OgreQuaternion.h"
 
 #include <osvr/ClientKit/ClientKit.h>
 #include <osvr/ClientKit/Display.h>
@@ -61,6 +63,10 @@ namespace rviz_plugin_osvr
 			void setupDistortion();
 			bool setupOgre(Ogre::SceneManager *sm, Ogre::RenderWindow *win, Ogre::SceneNode *parent);
 			void update();
+			bool getPose(Ogre::Vector3& pos, Ogre::Quaternion& ori);
+
+			inline void setPosOffset(const Ogre::Vector3& offset){pos_offset_ = offset;}
+			inline void setPosScale(const Ogre::Vector3& scale){pos_scale_ = scale;}
 
 		protected:
 			Ogre::RenderWindow* window_;
@@ -75,12 +81,15 @@ namespace rviz_plugin_osvr
 			Ogre::Viewport* external_viewport_;
 			Ogre::Camera* external_camera_;
 
+
 			osvr::clientkit::ClientContext* osvr_ctx_;
 			osvr::clientkit::DisplayConfig* osvr_disp_conf_;
 
 		private:
 			Distortion distortion_;
-			Ogre::Vector3 head_offset_;
+			Ogre::Vector3 pos_offset_;
+			Ogre::Vector3 pos_scale_;
+
 	};
 
 

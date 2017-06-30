@@ -18,6 +18,7 @@
 #include <rviz/properties/enum_property.h>
 #include <rviz/properties/tf_frame_property.h>
 #include <rviz/properties/vector_property.h>
+#include <rviz/properties/string_property.h>
 
 //#include <osvr/ClientKit/ServerAutoStartC.h>
 
@@ -36,7 +37,10 @@ PluginDisplay::PluginDisplay() : osvr_client_(0),
 	fullscreen_property_(0), 
 	fullscreen_name_property_(0), 
 	tf_frame_property_(0), 
-	offset_property_(0)
+	pos_offset_property_(0),
+	pos_scale_property_(0),
+	pub_tf_property_(0),
+	pub_tf_frame_property_(0)
 	{}
 
 PluginDisplay::~PluginDisplay()
@@ -67,7 +71,10 @@ PluginDisplay::~PluginDisplay()
 	if (fullscreen_property_) delete fullscreen_property_;
 	if (fullscreen_name_property_) delete fullscreen_name_property_;
 	if (tf_frame_property_) delete tf_frame_property_;
-	if (offset_property_) delete offset_property_;
+	if (pos_offset_property_) delete pos_offset_property_;
+	if (pos_scale_property_) delete pos_scale_property_;
+	if (pub_tf_property_) delete pub_tf_property_;
+	if (pub_tf_frame_property_) delete pub_tf_frame_property_;
 
 	ROS_INFO("PluginDisplay::~PluginDisplay() ended");
 }
@@ -77,24 +84,48 @@ void PluginDisplay::onInitialize()
 {
 	ROS_INFO("PluginDisplay::onInitialize");
 	
-	// initialize all the plugin properties in rviz
-	fullscreen_property_ = new rviz::BoolProperty("Full Screen", false,
-		"If checked, will render fullscreen. Otherwise, shows a window.",
+	// *************
+	// Initialize all the plugin properties for rviz
+	// *************
+	fullscreen_property_ = new rviz::BoolProperty("Fullscreen", false,
+		"If checked, will render fullscreen on the selected screen. Otherwise, shows a window.",
 		this, SLOT(onFullScreenChanged()));
+
 	fullscreen_name_property_ = new rviz::EnumProperty("Screen name", "Select screen",
-		"The name of a screen where osvr context appears",
+		"The name of a screen where osvr window is displayed.",
 		this, SLOT(onFullScreenChanged()));
 	for(const auto& screen : QGuiApplication::screens())
 	{
 		fullscreen_name_property_->addOption(screen->name());
 	}
 
-	tf_frame_property_ = new rviz::TfFrameProperty("Target Frame", "<Fixed Frame>", 
+	follow_cam_property_ = new rviz::BoolProperty("Follow RViz camera", true,
+			"If checked, will follow the pose of RViz main camerai.",
+			this, SLOT(onFollowCamChanged()));
+
+	tf_frame_property_ = new rviz::TfFrameProperty("Target frame", "<Fixed Frame>", 
 			"Tf frame that VR camera follows", this, context_->getFrameManager(), true);
 
-	offset_property_ = new rviz::VectorProperty("Offset", Ogre::Vector3(0,0,0),
-		   "Additional offset of the VR camera from the followed RViz camera or target frame.", this);
+	pos_offset_property_ = new rviz::VectorProperty("Offset", Ogre::Vector3(0,0,0),
+		   "This offset is added to the raw reading obtained from the OSVR IR tracking device."
+		   " The offset is added before scaling.", 
+		   this, SLOT(onPosOffsetChanged()));
 
+	pos_scale_property_ = new rviz::VectorProperty("Scale", Ogre::Vector3(1,1,1),
+		   "With this property you can set the gain of the position tracking.", 
+		   this, SLOT(onPosScaleChanged()));
+
+	pub_tf_property_ = new rviz::BoolProperty("Publish tf", true,
+		"If checked, will publish the pose of OSVR as a tf frame.",
+		this, SLOT(onPubTfChanged()));
+
+	pub_tf_frame_property_ = new rviz::StringProperty("OSVR tf frame", "/rviz_plugin_osvr/head",
+		"Name of the published tf frame.", this);
+
+
+	// *************
+	// Initialize osvr window, widget and scenenode
+	// *************
 	render_widget_ = new rviz::RenderWidget(rviz::RenderSystem::get());
 	render_widget_->setWindowTitle("OSVR View");
 	render_widget_->setParent(context_->getWindowManager()->getParentWindow());
@@ -106,7 +137,6 @@ void PluginDisplay::onInitialize()
 	Ogre::RenderWindow *window = render_widget_->getRenderWindow();
 	window->setAutoUpdated(false);
 	window->addListener(this);
-
 	scene_node_ = scene_manager_->getRootSceneNode()->createChildSceneNode();
 }
 
@@ -207,6 +237,43 @@ void PluginDisplay::onFullScreenChanged()
 }
 
 
+void PluginDisplay::onFollowCamChanged()
+{
+	  tf_frame_property_->setHidden(follow_cam_property_->getBool());
+}
+
+
+void PluginDisplay::onPubTfChanged()
+{
+	  pub_tf_frame_property_->setHidden(!pub_tf_property_->getBool());
+}
+
+
+void PluginDisplay::onPosOffsetChanged()
+{
+	if(osvr_client_)
+	{
+		//from rviz space to opengl space
+		osvr_client_->setPosOffset(Ogre::Vector3(
+				-pos_offset_property_->getVector().y,
+				 pos_offset_property_->getVector().z,
+				-pos_offset_property_->getVector().x
+				));
+	}
+}
+
+
+void PluginDisplay::onPosScaleChanged()
+{
+	if(osvr_client_)
+	{
+		osvr_client_->setPosScale(Ogre::Vector3(
+				pos_scale_property_->getVector().y,
+				pos_scale_property_->getVector().z,
+				pos_scale_property_->getVector().x
+				));
+	}
+}
 
 void PluginDisplay::preRenderTargetUpdate(const Ogre::RenderTargetEvent& evt)
 {
@@ -230,15 +297,69 @@ void PluginDisplay::update(float wall_dt, float ros_dt)
 
 void PluginDisplay::updateCamera(float wall_dt, float ros_dt)
 {
-	//Synchronize rotation and position of the scene in rviz window.
-	const Ogre::Camera *cam = context_->getViewManager()->getCurrent()->getCamera();
-	scene_node_->setPosition(cam->getDerivedPosition());
-	scene_node_->setOrientation(cam->getDerivedOrientation());
-	if(osvr_client_)
+	// VR head pose in OpenGL coordinates
+	Ogre::Vector3 pos;
+	Ogre::Quaternion ori;
+	
+	if(follow_cam_property_->getBool())
 	{
-		osvr_client_->update();
+		//Synchronize rotation and position with the one in rviz window.
+		const Ogre::Camera *cam = context_->getViewManager()->getCurrent()->getCamera();
+		pos = cam->getDerivedPosition();
+		ori = cam->getDerivedOrientation();
+	}
+	else
+	{
+		context_->getFrameManager()->getTransform(tf_frame_property_->getStdString(),
+			                                                  ros::Time(), pos, ori);
+	    Ogre::Quaternion r; // Rotate from RViz coordinates to OpenGL coordinates
+	    r.FromAngleAxis(Ogre::Radian(M_PI*0.5), Ogre::Vector3::UNIT_X);
+	    ori = ori*r;
+	    r.FromAngleAxis(Ogre::Radian(-M_PI*0.5), Ogre::Vector3::UNIT_Y);
+	    ori = ori*r;	
 	}
 
+	// add offset provided in RViz coordso  
+//	pos += offset_property_->getVector();
+	
+	scene_node_->setPosition(pos);
+	scene_node_->setOrientation(ori);
+
+	if(!osvr_client_)
+	{
+		return;
+	}
+
+	osvr_client_->update();
+
+	// publish tf if selected
+	if(pub_tf_property_->getBool())
+	{
+		tf::StampedTransform pose;
+		pose.frame_id_ = context_->getFixedFrame().toStdString();
+		pose.child_frame_id_ = pub_tf_frame_property_->getStdString();
+		pose.stamp_ = ros::Time::now();
+
+		Ogre::Vector3 head_pos;
+		Ogre::Quaternion head_ori;
+		if(osvr_client_->getPose(head_pos, head_ori))
+		{
+			ori = ori*head_ori;
+			pos.x -= head_pos.z;
+			pos.y -= head_pos.x;
+			pos.z += head_pos.y;
+
+			Ogre::Quaternion r; //Transform from OpenGL space to RViz space
+			r.FromAngleAxis(Ogre::Radian(M_PI*0.5), Ogre::Vector3::UNIT_Y);
+			ori = ori * r;
+			r.FromAngleAxis(Ogre::Radian(-M_PI*0.5), Ogre::Vector3::UNIT_X);
+			ori = ori * r;
+			
+			pose.setRotation(tf::Quaternion(ori.x, ori.y, ori.z, ori.w));
+			pose.setOrigin(tf::Vector3(pos.x, pos.y, pos.z));
+			tf_pub_.sendTransform(pose);
+		}
+	}
 }
 
 void PluginDisplay::reset()
