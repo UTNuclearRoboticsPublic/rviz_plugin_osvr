@@ -93,15 +93,17 @@ namespace rviz_plugin_osvr
 				viewports_[0]=0;
 		}
 
-		if(osvr_ctx_) 
-		{
-			delete osvr_ctx_;
-		}
-
 		if(osvr_disp_conf_)
 		{
 			delete osvr_disp_conf_;
+			osvr_disp_conf_=0;
 		}	
+
+		if(osvr_ctx_) 
+		{
+			delete osvr_ctx_;
+			osvr_ctx_=0;
+		}
 
 		// Destroy resourcegroup with its resources
 		Ogre::ResourceGroupManager* res_mgr = Ogre::ResourceGroupManager::getSingletonPtr();
@@ -158,7 +160,6 @@ namespace rviz_plugin_osvr
 		{
 			ROS_INFO("onInitialize(): Failed to generate distortion mesh.");
 		}
-		
 	}
 
 	bool OsvrClient::setupOgre(Ogre::SceneManager *sm, Ogre::RenderWindow *win, Ogre::SceneNode *parent)

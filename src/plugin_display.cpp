@@ -2,6 +2,7 @@
 
 #include <OGRE/OgreRoot.h>
 #include <OGRE/OgreSceneNode.h>
+#include <OGRE/OgreSceneManager.h>
 #include <OGRE/OgreRenderWindow.h>
 
 #include <rviz_plugin_osvr/plugin_display.h>
@@ -18,39 +19,41 @@
 #include <rviz/properties/tf_frame_property.h>
 #include <rviz/properties/vector_property.h>
 
-//#include <osvr/ClientKit/Context.h>
-//#include <osvr/ClientKit/Display.h>
-//#include <osvr/ClientKit/DisplayConfig.h>
-//#include <osvr/ClientKit/Parameters.h>
-#include <osvr/ClientKit/ServerAutoStartC.h>
+//#include <osvr/ClientKit/ServerAutoStartC.h>
 
 #include <QWidget>
 #include <QWindow>
 #include <QScreen>
-//#include <QRect>
 #include <QApplication>
 #include <QGuiApplication>
 #include <QDesktopWidget>
 
 namespace rviz_plugin_osvr{
 
-PluginDisplay::PluginDisplay() : osvr_client_(0), render_widget_(0), scene_node_(0), 
-		fullscreen_property_(0)
-{
-//	Ogre::MaterialManager::getSingleton().setVerbose(true);
-}
+PluginDisplay::PluginDisplay() : osvr_client_(0), 
+	render_widget_(0), 
+	scene_node_(0), 
+	fullscreen_property_(0), 
+	fullscreen_name_property_(0), 
+	tf_frame_property_(0), 
+	offset_property_(0)
+	{}
 
 PluginDisplay::~PluginDisplay()
 {
+	
 	ROS_INFO("PluginDisplay::~PluginDisplay()");
-	delete osvr_client_;
-	osvr_client_=0;
-	ROS_INFO("removed osvr osvr client");
+	if(osvr_client_)
+	{
+		delete osvr_client_;
+		osvr_client_=0;
+		ROS_INFO("removed osvr osvr client");
+	}
 
-	ROS_INFO("removed resource path from ogre resource manager");
 	if(scene_node_)
 	{
-		delete scene_node_;
+		scene_manager_->getRootSceneNode()->removeChild(scene_node_);
+		scene_manager_->destroySceneNode(scene_node_);
 		scene_node_=0;
 		ROS_INFO("deleted scene node");
 	}
@@ -61,6 +64,10 @@ PluginDisplay::~PluginDisplay()
 		ROS_INFO("deleted render widget");
 	}
 
+	if (fullscreen_property_) delete fullscreen_property_;
+	if (fullscreen_name_property_) delete fullscreen_name_property_;
+	if (tf_frame_property_) delete tf_frame_property_;
+	if (offset_property_) delete offset_property_;
 
 	ROS_INFO("PluginDisplay::~PluginDisplay() ended");
 }
@@ -69,12 +76,11 @@ PluginDisplay::~PluginDisplay()
 void PluginDisplay::onInitialize()
 {
 	ROS_INFO("PluginDisplay::onInitialize");
-
+	
 	// initialize all the plugin properties in rviz
 	fullscreen_property_ = new rviz::BoolProperty("Full Screen", false,
 		"If checked, will render fullscreen. Otherwise, shows a window.",
 		this, SLOT(onFullScreenChanged()));
-
 	fullscreen_name_property_ = new rviz::EnumProperty("Screen name", "Select screen",
 		"The name of a screen where osvr context appears",
 		this, SLOT(onFullScreenChanged()));
@@ -89,11 +95,8 @@ void PluginDisplay::onInitialize()
 	offset_property_ = new rviz::VectorProperty("Offset", Ogre::Vector3(0,0,0),
 		   "Additional offset of the VR camera from the followed RViz camera or target frame.", this);
 
-
 	render_widget_ = new rviz::RenderWidget(rviz::RenderSystem::get());
-	render_widget_->setVisible(false);
 	render_widget_->setWindowTitle("OSVR View");
-
 	render_widget_->setParent(context_->getWindowManager()->getParentWindow());
 	render_widget_->setWindowFlags(
 			Qt::Window | 
@@ -105,14 +108,11 @@ void PluginDisplay::onInitialize()
 	window->addListener(this);
 
 	scene_node_ = scene_manager_->getRootSceneNode()->createChildSceneNode();
-
-	
 }
 
 
 void PluginDisplay::onEnable()
 {
-	
 	ROS_INFO("Enabling %s", ROS_PACKAGE_NAME);
 	if(!render_widget_ || !scene_node_)
 	{
@@ -145,14 +145,12 @@ void PluginDisplay::onEnable()
 		osvr_client_->setupDistortion();
 		osvr_client_->setupOgre(scene_manager_, window, scene_node_);
 	}
-
 }
 
 
 
 void PluginDisplay::onDisable()
 {
-	
 	ROS_INFO("Disabling %s", ROS_PACKAGE_NAME);
 
 	Ogre::RenderWindow *window = render_widget_->getRenderWindow();

@@ -54,7 +54,6 @@ namespace rviz_plugin_osvr
 
 		
 			rviz::RenderWidget *render_widget_;
-//			osvr::clientkit::ClientContext *osvr_context_;
 			Ogre::SceneNode *scene_node_;
 
 			#ifndef Q_MOC_RUN

@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
 <launch>
 	<node name="osvr_server" pkg="rviz_plugin_osvr" type="start_osvr_server.sh" />
-	<node name="rviz" args="-l" pkg="rviz" type="rviz" output="screen"/>
+	<node name="rviz" args="-l -d $(find rviz_plugin_osvr)/rviz_cfg/rviz_plugin_osvr.rviz)" pkg="rviz" type="rviz" output="screen"/>
+	<node pkg="tf" type="static_transform_publisher" name="map_publisher" args="0 0 0 0 0 0 1 world rviz_plugin_osvr/head 1"/>
 </launch>

@@ -1,6 +1,7 @@
 <library path="lib/librviz_plugin_osvr">
   <class type="rviz_plugin_osvr::PluginDisplay"
-         base_class_type="rviz::Display">
+	  base_class_type="rviz::Display"
+	  name="OSVR Plugin for RViz">
     <description>
       Renders the rviz scene to a secondary monitor using OSVR library.
     </description>
