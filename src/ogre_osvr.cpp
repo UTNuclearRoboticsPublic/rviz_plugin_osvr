@@ -203,7 +203,7 @@ namespace rviz_plugin_osvr
 			cameras_[i]->setNearClipDistance(g_defaultNearClip);
 			cameras_[i]->setFarClipDistance(g_defaultFarClip);
 			cameras_[i]->setPosition((i * 2 - 1) * g_defaultIPD * 0.5f, 0, 0);
-		//	cameras_[i]->setAspectRatio(1.0);
+			cameras_[i]->setAspectRatio(1200.0/2160.0*2); 
 			cameras_[i]->setFOVy(Ogre::Degree(90));
 
 

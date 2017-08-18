@@ -41,7 +41,7 @@ namespace rviz_plugin_osvr
 			//Override methods from rviz::Display
 			virtual void onEnable();
 			virtual void onDisable();
-			
+
 			void updateCamera(float wall_dt, float ros_dt);
 
 		protected Q_SLOTS:

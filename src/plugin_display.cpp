@@ -216,8 +216,6 @@ void PluginDisplay::onFullScreenChanged()
 					scr->availableGeometry().y(),
 					default_width,
 					default_height);
-			ROS_INFO("%d %d",scr->availableGeometry().x(), scr->availableGeometry().y());
-			//render_widget_->saveGeometry();
 			screen = scr;
 			break;
 		}
@@ -225,12 +223,12 @@ void PluginDisplay::onFullScreenChanged()
 
 	if (fullscreen_property_->getBool())
 	{
-		ROS_INFO_STREAM("Going fullscreen on "<<screen->name().toUtf8().constData());
+		ROS_INFO_STREAM("OSVR is going fullscreen on "<<screen->name().toUtf8().constData());
 		render_widget_->showFullScreen();
 	}
 	else
 	{
-		ROS_INFO_STREAM("Going windowed mode (" << default_width << " x " << default_height << ") on " << 
+		ROS_INFO_STREAM("OSVR is going window mode (" << default_width << " x " << default_height << ") on " << 
 				screen->name().toUtf8().constData());
 		render_widget_->showNormal();
 	}
@@ -274,6 +272,7 @@ void PluginDisplay::onPosScaleChanged()
 				));
 	}
 }
+
 
 void PluginDisplay::preRenderTargetUpdate(const Ogre::RenderTargetEvent& evt)
 {
