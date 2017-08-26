@@ -29,11 +29,13 @@ namespace
 {
 	const float g_defaultNearClip = 0.01f;
 	const float g_defaultFarClip = 10000.0f;
-	const float g_defaultIPD = 0.064f;
+	//IPD Gender  Mean     Min      Max
+	//    Female  0.0617   0.051    0.0745
+	//    Male    0.064    0.053    0.077
+
+//	const float g_defaultIPD = 0.064f; //average male IPD
+	const float g_defaultIPD = 0.075f;
 	const Ogre::ColourValue g_defaultViewportColour(97 / 255.0f, 97 / 255.0f, 200 / 255.0f);
-	const float g_defaultProjectionCenterOffset = 0.058;
-	const float g_defaultDistortion[4] = {1.0f, -1.74f, 5.15f, -1.27f};
-	const float g_defaultChromAb[4] = {0.996, -0.004, 1.014, 0.0f};
 }
 
 namespace rviz_plugin_osvr
