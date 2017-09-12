@@ -1,5 +1,5 @@
 #include <boost/operators.hpp>
-#include <rviz_plugin_osvr/ogre_osvr.h>
+#include <rviz_plugin_osvr/osvr_client.h>
 #include "rviz/display.h"
 #include <rviz/display_context.h>
 #include <rviz/ogre_helpers/render_system.h>
@@ -24,8 +24,6 @@
 #include <osvr/Util/Pose3C.h>
 
 
-#include "rviz_plugin_osvr/ogre_osvr.h"
-
 namespace rviz_plugin_osvr
 {
 	OsvrClient::OsvrClient() :
@@ -35,7 +33,8 @@ namespace rviz_plugin_osvr
 		osvr_ctx_(0), 
 		osvr_disp_conf_(0),
 		pos_offset_(Ogre::Vector3(0,0,0)),
-		pos_scale_(Ogre::Vector3(1,1,1))
+		pos_scale_(Ogre::Vector3(1,1,1)),
+		use_tracker_(false)
 	{
 
 
@@ -204,7 +203,7 @@ namespace rviz_plugin_osvr
 			cameras_[i]->setFarClipDistance(g_defaultFarClip);
 			cameras_[i]->setPosition((i * 2 - 1) * g_defaultIPD * 0.5f, 0, 0);
 			cameras_[i]->setAspectRatio(1200.0/2160.0*2); 
-			cameras_[i]->setFOVy(Ogre::Degree(90));
+			cameras_[i]->setFOVy(Ogre::Degree(92));
 
 
 			// Create Textures and materials for viewports
@@ -297,8 +296,8 @@ namespace rviz_plugin_osvr
 		Ogre::Quaternion ori;
 		if(getPose(pos, ori))
 		{
-			camera_node_->setPosition(pos);
 			camera_node_->setOrientation(ori);
+			camera_node_->setPosition(pos);
 		}
 	}
 
@@ -317,9 +316,20 @@ namespace rviz_plugin_osvr
 			if(!viewer.getPose(pose))
 				return false;
 
-			pos.x = (Ogre::Real)pose.translation.data[0];
-			pos.y =	(Ogre::Real)pose.translation.data[1];
-			pos.z =	(Ogre::Real)pose.translation.data[2];
+			
+			// if tracker is enabled, get its position.
+			if(use_tracker_)
+			{
+				pos.x = (Ogre::Real)pose.translation.data[0];
+				pos.y =	(Ogre::Real)pose.translation.data[1];
+				pos.z =	(Ogre::Real)pose.translation.data[2];
+			}
+			else
+			{
+				pos.x = 0;
+				pos.y = 0;
+				pos.z = 0;
+			}
 			pos+=pos_offset_;
 			pos*=pos_scale_;
 

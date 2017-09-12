@@ -40,7 +40,8 @@ PluginDisplay::PluginDisplay() : osvr_client_(0),
 	pos_offset_property_(0),
 	pos_scale_property_(0),
 	pub_tf_property_(0),
-	pub_tf_frame_property_(0)
+	pub_tf_frame_property_(0),
+	use_tracker_property_(0)
 	{}
 
 PluginDisplay::~PluginDisplay()
@@ -75,6 +76,7 @@ PluginDisplay::~PluginDisplay()
 	if (pos_scale_property_) delete pos_scale_property_;
 	if (pub_tf_property_) delete pub_tf_property_;
 	if (pub_tf_frame_property_) delete pub_tf_frame_property_;
+	if (use_tracker_property_) delete use_tracker_property_;
 
 	ROS_INFO("PluginDisplay::~PluginDisplay() ended");
 }
@@ -121,6 +123,10 @@ void PluginDisplay::onInitialize()
 
 	pub_tf_frame_property_ = new rviz::StringProperty("OSVR tf frame", "/rviz_plugin_osvr/head",
 		"Name of the published tf frame.", this);
+
+	use_tracker_property_ = new rviz::BoolProperty("Use tracker", true,
+		"If checked, will update head position based on OSVR IR tracker data",
+		this, SLOT(onUseTrackerChanged()));
 
 
 	// *************
@@ -173,6 +179,7 @@ void PluginDisplay::onEnable()
 		
 		osvr_client_ = new OsvrClient();
 		osvr_client_->setupDistortion();
+		osvr_client_->useTracker(use_tracker_property_->getBool());
 		osvr_client_->setupOgre(scene_manager_, window, scene_node_);
 	}
 }
@@ -273,6 +280,14 @@ void PluginDisplay::onPosScaleChanged()
 	}
 }
 
+void PluginDisplay::onUseTrackerChanged()
+{
+	if(osvr_client_)
+	{
+		osvr_client_->useTracker(use_tracker_property_->getBool());
+	}
+}
+
 
 void PluginDisplay::preRenderTargetUpdate(const Ogre::RenderTargetEvent& evt)
 {
@@ -309,6 +324,7 @@ void PluginDisplay::updateCamera(float wall_dt, float ros_dt)
 	}
 	else
 	{
+		// get reference frame pose
 		context_->getFrameManager()->getTransform(tf_frame_property_->getStdString(),
 			                                                  ros::Time(), pos, ori);
 	    Ogre::Quaternion r; // Rotate from RViz coordinates to OpenGL coordinates
@@ -318,9 +334,6 @@ void PluginDisplay::updateCamera(float wall_dt, float ros_dt)
 	    ori = ori*r;	
 	}
 
-	// add offset provided in RViz coordso  
-//	pos += offset_property_->getVector();
-	
 	scene_node_->setPosition(pos);
 	scene_node_->setOrientation(ori);
 
@@ -344,6 +357,7 @@ void PluginDisplay::updateCamera(float wall_dt, float ros_dt)
 		if(osvr_client_->getPose(head_pos, head_ori))
 		{
 			ori = ori*head_ori;
+			
 			pos.x -= head_pos.z;
 			pos.y -= head_pos.x;
 			pos.z += head_pos.y;

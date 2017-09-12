@@ -33,8 +33,7 @@ namespace
 	//    Female  0.0617   0.051    0.0745
 	//    Male    0.064    0.053    0.077
 
-//	const float g_defaultIPD = 0.064f; //average male IPD
-	const float g_defaultIPD = 0.075f;
+	const float g_defaultIPD = 0.064f; //average male IPD
 	const Ogre::ColourValue g_defaultViewportColour(97 / 255.0f, 97 / 255.0f, 200 / 255.0f);
 }
 
@@ -68,7 +67,9 @@ namespace rviz_plugin_osvr
 			bool getPose(Ogre::Vector3& pos, Ogre::Quaternion& ori);
 
 			inline void setPosOffset(const Ogre::Vector3& offset){pos_offset_ = offset;}
+			inline Ogre::Vector3 getPosOffset() {return pos_offset_;}
 			inline void setPosScale(const Ogre::Vector3& scale){pos_scale_ = scale;}
+			void useTracker(bool use_tracker){use_tracker_ = use_tracker;}
 
 		protected:
 			Ogre::RenderWindow* window_;
@@ -91,6 +92,7 @@ namespace rviz_plugin_osvr
 			Distortion distortion_;
 			Ogre::Vector3 pos_offset_;
 			Ogre::Vector3 pos_scale_;
+			bool use_tracker_;
 
 	};
 

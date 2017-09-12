@@ -4,7 +4,7 @@
 #include <OGRE/OgreRenderTargetListener.h>
 
 #include <rviz/display.h>
-#include <rviz_plugin_osvr/ogre_osvr.h>
+#include <rviz_plugin_osvr/osvr_client.h>
 
 #include <tf/transform_broadcaster.h>
 
@@ -50,6 +50,7 @@ namespace rviz_plugin_osvr
 			void onFollowCamChanged();
 			void onPosOffsetChanged();
 			void onPosScaleChanged();
+			void onUseTrackerChanged();
 			
 
 		private:
@@ -62,6 +63,7 @@ namespace rviz_plugin_osvr
 			rviz::BoolProperty *pub_tf_property_;
 			rviz::StringProperty *pub_tf_frame_property_;
 			rviz::BoolProperty *follow_cam_property_;
+			rviz::BoolProperty *use_tracker_property_;
 			
 			tf::TransformBroadcaster tf_pub_;			
 		
