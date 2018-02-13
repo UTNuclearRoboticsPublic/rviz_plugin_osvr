@@ -41,7 +41,8 @@ PluginDisplay::PluginDisplay() : osvr_client_(0),
 	pos_scale_property_(0),
 	pub_tf_property_(0),
 	pub_tf_frame_property_(0),
-	use_tracker_property_(0)
+	use_tracker_property_(0),
+	reset_orientation_property_(0)
 	{}
 
 PluginDisplay::~PluginDisplay()
@@ -77,6 +78,7 @@ PluginDisplay::~PluginDisplay()
 	if (pub_tf_property_) delete pub_tf_property_;
 	if (pub_tf_frame_property_) delete pub_tf_frame_property_;
 	if (use_tracker_property_) delete use_tracker_property_;
+	if (reset_orientation_property_) delete reset_orientation_property_;
 
 	ROS_INFO("PluginDisplay::~PluginDisplay() ended");
 }
@@ -127,6 +129,10 @@ void PluginDisplay::onInitialize()
 	use_tracker_property_ = new rviz::BoolProperty("Use tracker", true,
 		"If checked, will update head position based on OSVR IR tracker data",
 		this, SLOT(onUseTrackerChanged()));
+
+	reset_orientation_property_ = new rviz::BoolProperty("Reset orientation", false,
+		"If checked, will set current OSVR orientation as inversed offset, so that current orientation will become zero.",
+		this, SLOT(onResetOrientationChanged()));
 
 
 	// *************
@@ -288,6 +294,15 @@ void PluginDisplay::onUseTrackerChanged()
 	}
 }
 
+void PluginDisplay::onResetOrientationChanged()
+{
+  // make this property act as a button
+  reset_orientation_property_->setBool(false);
+  if(osvr_client_)
+	{
+		osvr_client_->resetOrientation();
+	}
+}
 
 void PluginDisplay::preRenderTargetUpdate(const Ogre::RenderTargetEvent& evt)
 {

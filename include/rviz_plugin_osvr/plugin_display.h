@@ -51,6 +51,7 @@ namespace rviz_plugin_osvr
 			void onPosOffsetChanged();
 			void onPosScaleChanged();
 			void onUseTrackerChanged();
+			void onResetOrientationChanged();
 			
 
 		private:
@@ -64,6 +65,7 @@ namespace rviz_plugin_osvr
 			rviz::StringProperty *pub_tf_frame_property_;
 			rviz::BoolProperty *follow_cam_property_;
 			rviz::BoolProperty *use_tracker_property_;
+			rviz::BoolProperty *reset_orientation_property_;
 			
 			tf::TransformBroadcaster tf_pub_;			
 		

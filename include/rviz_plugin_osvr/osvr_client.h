@@ -70,6 +70,7 @@ namespace rviz_plugin_osvr
 			inline Ogre::Vector3 getPosOffset() {return pos_offset_;}
 			inline void setPosScale(const Ogre::Vector3& scale){pos_scale_ = scale;}
 			void useTracker(bool use_tracker){use_tracker_ = use_tracker;}
+      void resetOrientation();
 
 		protected:
 			Ogre::RenderWindow* window_;
@@ -92,6 +93,7 @@ namespace rviz_plugin_osvr
 			Distortion distortion_;
 			Ogre::Vector3 pos_offset_;
 			Ogre::Vector3 pos_scale_;
+			Ogre::Quaternion ori_offset_;
 			bool use_tracker_;
 
 	};

@@ -338,7 +338,16 @@ namespace rviz_plugin_osvr
 			ori.y = (Ogre::Real)osvrQuatGetY(&pose.rotation);
 			ori.z = (Ogre::Real)osvrQuatGetZ(&pose.rotation);
 			ori.normalise();
-		}
+      ori = ori_offset_ * ori;
+    }
 		return true;
 	}
+
+  void OsvrClient::resetOrientation()
+  {
+    Ogre::Vector3 pos;
+    Ogre::Quaternion ori;
+    getPose(pos,ori);
+    ori_offset_ = (ori_offset_.Inverse() * ori).Inverse();
+  }
 } // namespace rviz_plugin_osvr
