@@ -10,7 +10,7 @@ Creates the [OSVR](http://www.osvr.com) stereo display for RViz. It wraps the IM
 This project uses the following OSVR components: [OSVR-Core](https://github.com/OSVR/OSVR-Core) and [libfunctionality](https://github.com/OSVR/libfunctionality). However, before trying to compile those, make sure your system meets the required [dependencies](https://github.com/OSVR/OSVR-Docs/blob/master/Getting-Started/Installing/Linux-Build-Instructions.md).
 ```
 sudo apt update && sudo apt upgrade
-sudo apt install libopencv-dev libsdl2-dev libboost1.58-dev libboost-thread1.58-dev libboost-program-options1.58-dev libboost-filesystem-dev libusb-1.0-0-dev
+sudo apt install libsdl2-dev libboost1.58-dev libboost-thread1.58-dev libboost-program-options1.58-dev libboost-filesystem-dev libusb-1.0-0-dev
 ```
 
 The build and install directories in this example are **~/build** and **~/osvr**, respectively. Feel free to modify them according to your needs.
@@ -47,6 +47,7 @@ So, locate the **~/build/OSVR-Core/CMakeLists.txt** and make the following chang
 ...
 
 -   find_package(OpenCV)
++   set(OpenCV_DIR "/opt/ros/kinetic/share/OpenCV-3.3.1/")
 +   find_package(OpenCV COMPONENTS core videoio imgproc features2d calib3d highgui flann ml imgcodecs)
 
 ...
