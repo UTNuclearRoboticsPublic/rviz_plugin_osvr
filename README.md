@@ -15,20 +15,29 @@ sudo apt install libsdl2-dev libboost1.58-dev libboost-thread1.58-dev libboost-p
 
 The build and install directories in this example are **~/build** and **~/osvr**, respectively. Feel free to modify them according to your needs.
 
-#### libfunctionality
+#### libfunctionality & libuvc
 ```
 # Create a directory for build files
 mkdir ~/build && cd ~/build
 
 # Clone the source files
 git clone --recursive https://github.com/OSVR/libfunctionality.git
+git clone https://github.com/ktossell/libuvc.git
 
 # Build libfunctionality
 cd libfunctionality
 cmake . -DCMAKE_INSTALL_PREFIX=~/osvr
 make
 make install
+
+# Build libuvc
+cd ~/build/libuvc
+mkdir build
+cd build
+cmake ..
+make && sudo make install
 ```
+
 
 #### OSVR-Core
 Now that we have libfunctionality installed, clone yourself the source of OSVR-Core.
@@ -83,7 +92,7 @@ Now we're ready to build OSVR with OpenCV. Remember to build it out of source us
 #Build OSVR-core
 mkdir ~/build/OSVR-Core/build
 cd ~/build/OSVR-Core/build
-cmake .. -DCMAKE_INSTALL_PREFIX=~/osvr -DCMAKE_PREFIX_PATH=/opt/ros/kinetic/lib/cmake
+cmake .. -DCMAKE_INSTALL_PREFIX=~/osvr
 make
 make install
 ```
