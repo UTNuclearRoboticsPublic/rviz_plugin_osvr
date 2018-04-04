@@ -129,7 +129,5 @@ Open up RViz, load the osvr display plugin, and have fun!
 
 `sudo nano /etc/udev/rules.d/50-OSVR.rules`
 
-Make sure the 'group' includes your current user. Then reload the udev rules with:
-
-`udevadm control --reload-rules && udevadm trigger`
+Make sure the 'group' includes your current user. Then reboot to reload the udev rules.
 
