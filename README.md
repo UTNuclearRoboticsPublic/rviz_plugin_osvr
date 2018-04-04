@@ -123,3 +123,10 @@ catkin build
 The plugin needs a running **osvr_server**, which you can either add to a system start-up or run via launch scripts:  
 `roslaunch rviz_plugin_osvr rviz_plugin_osvr.launch`  
 Open up RViz, load the osvr display plugin, and have fun!
+
+## Troubleshooting
+* Could not open device ...
+`sudo nano /etc/udev/rules.d/50-OSVR.rules`
+Make sure the 'group' includes your current user. Then reload the udev rules with:
+`udevadm control --reload-rules && udevadm trigger`
+
