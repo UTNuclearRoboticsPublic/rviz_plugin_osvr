@@ -119,6 +119,13 @@ git clone https://github.com/Veix123/rviz-plugin-osvr.git
 catkin build
 ```
 
+Set the `OSVR_CORE`environmental variable to point to your OSVR install directory.
+```
+nano ~/.bashrc
+export OSVR_CORE=~/osvr
+```
+
+
 ## USAGE
 The plugin needs a running **osvr_server**, which you can either add to a system start-up or run via launch scripts:  
 `roslaunch rviz_plugin_osvr rviz_plugin_osvr.launch`  
