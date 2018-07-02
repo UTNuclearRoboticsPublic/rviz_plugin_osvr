@@ -35,12 +35,11 @@ endif()
 add_definitions(-DQT_NO_KEYWORDS)
 
 # OSVR
-set(OSVR_DIR ~/osvr)
-find_package(osvr REQUIRED PATHS ${OSVR_DIR})
+find_package(osvr REQUIRED PATHS $ENV{OSVR_CORE})
 if(osvr_FOUND)
-	message(STATUS "Found osvr version ${osvr_VERSION} in ${osvr_DIR}")
-	set(OSVR_INCLUDE_DIRS ${OSVR_DIR}/include)
-	set(OSVR_LIBRARIES ${OSVR_DIR}/lib/libosvrClientKit.so ) 
+	message(STATUS "Found osvr version ${osvr_VERSION} in $ENV{OSVR_CORE}")
+	set(OSVR_INCLUDE_DIRS $ENV{OSVR_CORE}/include)
+	set(OSVR_LIBRARIES $ENV{OSVR_CORE}/lib/libosvrClientKit.so ) 
 
 	message(STATUS "OSVR INCLUDE DIRS: ${OSVR_INCLUDE_DIRS}")
 	message(STATUS "OSVR LIBRARIES: ${OSVR_LIBRARIES}")
