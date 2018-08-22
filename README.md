@@ -4,6 +4,8 @@ Creates the [OSVR](http://www.osvr.com) stereo display for RViz. It wraps the IM
 
 
 *This plugin is inspired by [oculus\_rvis\_plugins](https://github.com/ros-visualization/oculus_rviz_plugins) package.* 
+ 
+![](media/demo.gif)
 
 ## Build Instructions
 ### Setting up OSVR
@@ -137,4 +139,19 @@ Open up RViz, load the osvr display plugin, and have fun!
 `sudo nano /etc/udev/rules.d/50-OSVR.rules`
 
 Make sure the 'group' includes your current user. Then reboot to reload the udev rules.
+
+## References
+More information about this package is available in the paper [Improved Situational Awareness in ROS Using Panospheric Vision and Virtual Reality](https://doi.org/10.1109/HSI.2018.8431062).
+If you are using this software please add the following citation to your publication:
+```
+@INPROCEEDINGS{VunderSA2018, 
+author={V. Vunder and R. Valner and C. McMahon and K. Kruusamäe and M. Pryor}, 
+booktitle={2018 11th International Conference on Human System Interaction (HSI)}, 
+title={Improved Situational Awareness in ROS Using Panospheric Vision and Virtual Reality}, 
+year={2018}, 
+pages={471-477}, 
+keywords={Robots;Data visualization;Cameras;Headphones;Lenses;Distortion;Rendering (computer graphics);situational awareness;human-robot interaction;virtual reality;user interfaces;panospheric vision;telerobotics;ROS;RViz}, 
+doi={10.1109/HSI.2018.8431062}, 
+month={July},}
+```
 
